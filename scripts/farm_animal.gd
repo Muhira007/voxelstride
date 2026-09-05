@@ -18,12 +18,14 @@ var body_height := 1.5
 var radius := 0.5
 var resting := true
 var has_safe_position := true
+var ground_level := 14.02
 
-func configure(w: Node3D, kind: String, identifier: int, bounds: Rect2i) -> void:
+func configure(w: Node3D, kind: String, identifier: int, bounds: Rect2i, floor_level: float = 14.02) -> void:
 	world = w
 	species = kind
 	animal_id = identifier
 	pen = Rect2(bounds).grow(-1.2)
+	ground_level = floor_level
 	rng.seed = w.world_seed+identifier*719
 	body_height = {"cow":1.5,"sheep":1.25,"pig":0.95,"chicken":0.8}[species]
 	radius = 0.24 if species == "chicken" else 0.55
@@ -56,7 +58,7 @@ func can_stand(at: Vector3) -> bool:
 func find_safe_position() -> void:
 	has_safe_position = false
 	for i in 180:
-		var candidate := Vector3(rng.randf_range(pen.position.x+0.5,pen.end.x-0.5),14.02,rng.randf_range(pen.position.y+0.5,pen.end.y-0.5))
+		var candidate := Vector3(rng.randf_range(pen.position.x+0.5,pen.end.x-0.5),ground_level,rng.randf_range(pen.position.y+0.5,pen.end.y-0.5))
 		if can_stand(candidate):
 			position = candidate
 			target = candidate
@@ -90,7 +92,7 @@ func _physics_process(delta: float) -> void:
 	if moving and is_on_wall(): decision_time = minf(decision_time,0.25)
 	position.x = clampf(position.x,pen.position.x,pen.end.x-0.01)
 	position.z = clampf(position.z,pen.position.y,pen.end.y-0.01)
-	if position.y < 10: find_safe_position()
+	if position.y < ground_level-4: find_safe_position()
 	body.position.y = sin(age*8)*0.025 if moving else sin(age*1.8)*0.01
 	for i in legs.size(): legs[i].rotation.x = sin(age*8+(i%2)*PI)*0.35 if moving else 0.0
 

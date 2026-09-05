@@ -2,12 +2,13 @@ extends RefCounted
 
 const VERSION := 3
 const PATH := "user://world.json"
-const WORLD_IDS := ["classic", "farm"]
+const WORLD_IDS := ["classic", "farm", "valley"]
 var last_error := ""
 
 func world_path(world_id: String, base: String = "user://") -> String:
 	if world_id == "classic": return base.path_join("world.json")
 	if world_id == "farm": return base.path_join("worlds/desa-pertanian.json")
+	if world_id == "valley": return base.path_join("worlds/lembah-air-terjun.json")
 	return ""
 
 func read_world(world_id: String, base: String = "user://") -> Dictionary:
@@ -60,6 +61,8 @@ func _read_valid(path: String) -> Dictionary:
 			if data.get("world_size") != 96 or data.get("generator") != 1: return {}
 		elif data.get("world_id") == "farm":
 			if data.get("world_size") != 192 or data.get("generator") != 2: return {}
+		elif data.get("world_id") == "valley":
+			if data.get("world_size") != 384 or data.get("world_height") != 80 or data.get("generator") != 3: return {}
 		else: return {}
 		if not data.get("animals",[]) is Array: return {}
 	elif data.get("generator") != 1: return {}

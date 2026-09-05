@@ -3,6 +3,8 @@ extends Node3D
 const Blocks = preload("res://scripts/blocks.gd")
 const Farm = preload("res://scripts/farm_layout.gd")
 const Shapes = preload("res://scripts/voxel_shapes.gd")
+const Valley = preload("res://scripts/valley_layout.gd")
+const FarLandscape = preload("res://scripts/far_landscape.gd")
 const SIZE := 96
 const HEIGHT := 40
 const CHUNK := 16
@@ -30,6 +32,8 @@ var material: StandardMaterial3D
 var emissive_cells: Dictionary = {}
 var light_pool: Array[OmniLight3D] = []
 var size := SIZE
+var height := HEIGHT
+var far_landscape: Node3D
 var world_id := "classic"
 var generator_version := GENERATOR_VERSION
 var streaming := false
@@ -38,18 +42,19 @@ var stream_center := Vector2i(-100,-100)
 const STREAM_RADIUS := 3
 
 func configure(id: String) -> void:
-	assert(id in ["classic","farm"])
+	assert(id in ["classic","farm","valley"])
 	world_id = id
-	size = 192 if id == "farm" else SIZE
-	generator_version = 2 if id == "farm" else GENERATOR_VERSION
-	blocks.resize(size*HEIGHT*size)
+	size = 384 if id == "valley" else (192 if id == "farm" else SIZE)
+	height = 80 if id == "valley" else HEIGHT
+	generator_version = 3 if id == "valley" else (2 if id == "farm" else GENERATOR_VERSION)
+	blocks.resize(size*height*size)
 
 func _init() -> void:
 	Blocks.setup()
 	blocks.resize(SIZE * HEIGHT * SIZE)
 
 func inside(p: Vector3i) -> bool:
-	return p.x >= 0 and p.x < size and p.z >= 0 and p.z < size and p.y >= 0 and p.y < HEIGHT
+	return p.x >= 0 and p.x < size and p.z >= 0 and p.z < size and p.y >= 0 and p.y < height
 
 func index_of(p: Vector3i) -> int:
 	return p.x + size * (p.z + size * p.y)
@@ -65,6 +70,9 @@ func generate(seed_value: int) -> void:
 	blocks.fill(0)
 	changes.clear()
 	emissive_cells.clear()
+	if world_id == "valley":
+		Valley.generate(self)
+		return
 	if world_id == "farm":
 		Farm.generate(self)
 		return
@@ -105,11 +113,12 @@ func generate(seed_value: int) -> void:
 			for ly in range(y + 1, y + trunk + 1): _put(Vector3i(x,ly,z), 4)
 
 func surface_height(x: int, z: int) -> int:
-	for y in range(HEIGHT - 1, -1, -1):
+	for y in range(height - 1, -1, -1):
 		if get_block(Vector3i(x,y,z)) != 0: return y
 	return 0
 
 func spawn_position() -> Vector3:
+	if world_id == "valley": return Vector3(192.5,23.1,208.5)
 	if world_id == "farm": return Vector3(96.5,16.1,112.5)
 	return Vector3(SIZE / 2.0 + 0.5, surface_height(SIZE / 2, SIZE / 2) + 2.1, SIZE / 2.0 + 0.5)
 
@@ -119,6 +128,7 @@ func set_block(p: Vector3i, block: int) -> bool:
 	if block > 0 and Blocks.entries[block]["emissive"]: emissive_cells[p] = block
 	else: emissive_cells.erase(p)
 	changes[str(index_of(p))] = block
+	if is_instance_valid(far_landscape): far_landscape.mark_dirty(Vector2i(p.x/CHUNK,p.z/CHUNK))
 	_mark_dirty(Vector2i(p.x / CHUNK, p.z / CHUNK))
 	if p.x % CHUNK == 0: _mark_dirty(Vector2i(p.x / CHUNK - 1, p.z / CHUNK))
 	if p.x % CHUNK == CHUNK - 1: _mark_dirty(Vector2i(p.x / CHUNK + 1, p.z / CHUNK))
@@ -157,6 +167,7 @@ func update_stream(view_position: Vector3, force: bool = false) -> void:
 			remove_child(chunks[key])
 			chunks[key].queue_free()
 			chunks.erase(key)
+			if is_instance_valid(far_landscape): far_landscape.show_patch(key)
 
 func collision_ready(at: Vector3) -> bool:
 	return not streaming or chunks.has(Vector2i(floori(at.x/CHUNK),floori(at.z/CHUNK)))
@@ -170,7 +181,7 @@ func build_chunk(key: Vector2i) -> void:
 	var origin := Vector3i(key.x * CHUNK, 0, key.y * CHUNK)
 	for lx in CHUNK:
 		for lz in CHUNK:
-			for y in HEIGHT:
+			for y in height:
 				var p := origin + Vector3i(lx,y,lz)
 				var block := get_block(p)
 				if block == 0: continue
@@ -242,6 +253,19 @@ func build_chunk(key: Vector2i) -> void:
 		var shape := ConcavePolygonShape3D.new()
 		shape.set_faces(collision)
 		collider.shape = shape
+	if is_instance_valid(far_landscape): far_landscape.hide_patch(key)
+
+func generate_valley_async(seed_value: int, progress: Callable) -> void:
+	world_seed = seed_value
+	blocks.fill(0)
+	changes.clear()
+	emissive_cells.clear()
+	await Valley.generate_async(self,progress)
+
+func prepare_distant_landscape(progress: Callable) -> void:
+	far_landscape = FarLandscape.new()
+	add_child(far_landscape)
+	await far_landscape.prepare(self,progress)
 
 func vertex_shade(p: Vector3i, normal: Vector3i, corner: Vector3) -> float:
 	var tangents: Array[Vector3i] = []

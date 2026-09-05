@@ -3,6 +3,7 @@ extends Node3D
 const Animal = preload("res://scripts/farm_animal.gd")
 const Layout = preload("res://scripts/farm_layout.gd")
 const Geometry = preload("res://scripts/box_geometry.gd")
+const Valley = preload("res://scripts/valley_layout.gd")
 var animals: Array[CharacterBody3D] = []
 var world: Node3D
 var enabled := false
@@ -12,10 +13,13 @@ var recovery_timer := 0.0
 
 func populate(w: Node3D, saved: Array = []) -> void:
 	world = w
+	var offset := Valley.OFFSET if w.world_id == "valley" else Vector3i.ZERO
 	for pen in Layout.PENS:
 		for i in pen["count"]:
 			var animal := Animal.new()
-			animal.configure(w,pen["species"],animals.size(),pen["rect"])
+			var bounds: Rect2i = pen["rect"]
+			bounds.position += Vector2i(offset.x,offset.z)
+			animal.configure(w,pen["species"],animals.size(),bounds,14.02+offset.y)
 			add_child(animal)
 			for attempt in 30:
 				var clear := true
@@ -32,11 +36,15 @@ func populate(w: Node3D, saved: Array = []) -> void:
 		if (id is int or id is float) and is_finite(float(id)) and float(id) == int(id) and id >= 0 and id < animals.size(): animals[int(id)].restore(data)
 	for pen in Layout.PENS:
 		var r: Rect2i = pen["rect"]
-		signpost(Vector3(r.position.x+9,14,r.end.y),"KANDANG "+pen["name"].to_upper())
-	signpost(Vector3(91,14,111),"DESA PERTANIAN")
-	signpost(Vector3(78,14,95),"LADANG & KEBUN")
-	signpost(Vector3(91,14,135),"PADANG MEMBANGUN")
-	signpost(Vector3(129,14,46),"LUMBUNG DESA")
+		signpost(Vector3(r.position.x+9,14,r.end.y)+Vector3(offset),"KANDANG "+pen["name"].to_upper())
+	signpost(Vector3(91,14,111)+Vector3(offset),"DESA LEMBAH" if w.world_id == "valley" else "DESA PERTANIAN")
+	signpost(Vector3(78,14,95)+Vector3(offset),"LADANG & KEBUN")
+	signpost(Vector3(91,14,135)+Vector3(offset),"PADANG MEMBANGUN")
+	signpost(Vector3(129,14,46)+Vector3(offset),"LUMBUNG DESA")
+	if w.world_id == "valley":
+		for landmark in Valley.LANDMARKS:
+			var p: Vector2i = landmark[1]
+			signpost(Vector3(p.x-3,w.surface_height(p.x-3,p.y)+1,p.y),landmark[0])
 
 func _process(delta: float) -> void:
 	recovery_timer -= delta

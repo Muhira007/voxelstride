@@ -21,8 +21,16 @@ function Get-VerifiedArchive([string]$Asset, [string]$Destination) {
 }
 
 function Invoke-Godot([string[]]$GodotArgs) {
-    $output = & $engine @GodotArgs 2>&1
-    $code = $LASTEXITCODE
+    # Windows PowerShell treats native stderr as ErrorRecord. Collect the complete
+    # engine report before failing, rather than interrupting the smoke-test process.
+    $previousPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = & $engine @GodotArgs 2>&1
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
     $output | ForEach-Object { Write-Host $_ }
     if ($code -ne 0 -or ($output -match 'SCRIPT ERROR:|^ERROR:')) {
         throw "Godot gagal (exit $code): $GodotArgs"
@@ -49,6 +57,7 @@ if (-not (Test-Path -LiteralPath $engine)) { throw 'Godot tidak tersedia. Jalank
 Invoke-Godot @('--headless', '--path', '.', '--editor', '--import', '--quit')
 Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_core.gd')
 Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_worlds.gd')
+Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_valley.gd')
 Invoke-Godot @('--headless', '--path', '.', '--', '--smoke-test')
 Invoke-Godot @('--headless', '--path', '.', '--export-release', 'Windows Desktop', 'build/DuniaMinecraft.exe')
 
@@ -58,10 +67,11 @@ $process = Start-Process -FilePath $buildExe -WorkingDirectory (Join-Path $proje
 $code = $process.ExitCode
 $output = Get-Content -LiteralPath $smokeLog
 $output | ForEach-Object { Write-Host $_ }
-if ($code -ne 0 -or -not ($output -match 'SMOKE PASS:')) { throw 'Pengujian EXE hasil export gagal.' }
+if ($code -ne 0 -or -not ($output -match 'SMOKE PASS:') -or ($output -match 'SCRIPT ERROR:|^ERROR:')) { throw 'Pengujian EXE hasil export gagal.' }
 Copy-Item -LiteralPath 'README.md', 'LICENSE-Godot.txt', 'THIRD-PARTY-Godot.txt' -Destination 'build' -Force
 New-Item -ItemType Directory -Force -Path 'build\docs' | Out-Null
 Copy-Item -LiteralPath 'docs\gameplay.png', 'docs\materials.png', 'docs\inventory.png', 'docs\CATALOG.md', 'docs\DESA-PERTANIAN.md', 'docs\worlds.png', 'docs\farm-overview.png', 'docs\farm-gameplay.png', 'docs\farm-animals.png', 'docs\farm-fields.png' -Destination 'build\docs' -Force
+Copy-Item -LiteralPath 'docs\LEMBAH-AIR-TERJUN.md', 'docs\valley-gameplay.png', 'docs\valley-waterfall.png', 'docs\valley-overview.png', 'docs\valley-terraces.png', 'docs\valley-lake.png', 'docs\valley-tower.png' -Destination 'build\docs' -Force
 Compress-Archive -LiteralPath $buildExe, 'build\README.md', 'build\LICENSE-Godot.txt', 'build\THIRD-PARTY-Godot.txt', 'build\docs' -DestinationPath 'build\DuniaMinecraft-Windows-x64.zip' -Force
 Write-Host "Build selesai: $buildExe"
 Get-FileHash -LiteralPath $buildExe -Algorithm SHA256 | Format-List
