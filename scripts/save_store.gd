@@ -3,7 +3,6 @@ extends RefCounted
 const VERSION := 3
 const PATH := "user://world.json"
 const WORLD_IDS := ["classic", "farm", "valley"]
-const LEGACY_SAVE_DIR := "DuniaMinecraft"
 var last_error := ""
 
 func world_path(world_id: String, base: String = "user://") -> String:
@@ -25,7 +24,6 @@ func read_world(world_id: String, base: String = "user://") -> Dictionary:
 
 func prepare_world(world_id: String, base: String = "user://") -> bool:
 	last_error = ""
-	if base == "user://" and not _migrate_legacy_saves(): return false
 	var path := world_path(world_id,base)
 	if path.is_empty(): return false
 	if DirAccess.make_dir_recursive_absolute(path.get_base_dir()) != OK:
@@ -37,29 +35,6 @@ func prepare_world(world_id: String, base: String = "user://") -> bool:
 		if not _read_valid(source).is_empty() and DirAccess.copy_absolute(source,path+".pre-v0.3.bak") != OK:
 			last_error = "Cadangan dunia lama gagal dibuat; pemuatan dibatalkan."
 			return false
-	return true
-
-func _migrate_legacy_saves() -> bool:
-	var app_data := OS.get_environment("APPDATA")
-	if app_data.is_empty(): return true
-	var source_root := app_data.path_join(LEGACY_SAVE_DIR)
-	var destination_root := ProjectSettings.globalize_path("user://")
-	if source_root == destination_root or not DirAccess.dir_exists_absolute(source_root): return true
-	if not _copy_missing_files(source_root,destination_root):
-		last_error = "Save lama tidak dapat dipindahkan ke folder voxelstride."
-		return false
-	return true
-
-func _copy_missing_files(source_root: String, destination_root: String) -> bool:
-	if DirAccess.make_dir_recursive_absolute(destination_root) != OK: return false
-	var directory := DirAccess.open(source_root)
-	if directory == null: return false
-	for file_name in directory.get_files():
-		var source := source_root.path_join(file_name)
-		var destination := destination_root.path_join(file_name)
-		if not FileAccess.file_exists(destination) and DirAccess.copy_absolute(source,destination) != OK: return false
-	for directory_name in directory.get_directories():
-		if not _copy_missing_files(source_root.path_join(directory_name),destination_root.path_join(directory_name)): return false
 	return true
 
 func read_save(path: String = PATH) -> Dictionary:
