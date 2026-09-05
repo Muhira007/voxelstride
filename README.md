@@ -1,4 +1,4 @@
-# Dunia Minecraft
+# voxelstride
 
 Prototipe game voxel 3D **single-player offline** untuk Windows 10/11, dengan kontrol utama **Xbox 360** dan dukungan keyboard/mouse. Dibuat menggunakan Godot 4.6.1 dan renderer Compatibility.
 
@@ -6,8 +6,8 @@ Prototipe game voxel 3D **single-player offline** untuk Windows 10/11, dengan ko
 
 ## Mainkan
 
-1. Unduh `DuniaMinecraft-Windows-x64.zip` dari [Releases](https://github.com/Muhira007/Dunia-Minecraft/releases).
-2. Ekstrak ZIP, lalu buka `DuniaMinecraft.exe`. Tidak perlu memasang Godot atau menjalankan server.
+1. Unduh `voxelstride-Windows-x64.zip` dari [Releases](https://github.com/Muhira007/voxelstride/releases).
+2. Ekstrak ZIP, lalu buka `voxelstride.exe`. Tidak perlu memasang Godot atau menjalankan server.
 3. Pilih **Dunia Klasik**, **Desa Pertanian**, atau **Lembah & Air Terjun** dengan mouse atau D-pad dan tombol **A** pada controller.
 
 ## Jalankan langsung dari repo (Windows)
@@ -21,7 +21,7 @@ Jika Godot belum tersedia, launcher otomatis mengunduh editor portabel resmi (~8
 
 Log setiap sesi disimpan terpisah di **`artifacts/logs/game-<tanggal-jam>.log`**; log persiapan aset memakai awalan `import-`. Jika menemukan bug, sertakan log sesi terkait dan langkah untuk mengulang masalahnya. Folder log tidak di-push ke GitHub.
 
-`Mainkan.cmd` juga mengarah ke launcher source yang sama. Untuk memainkan hasil export tertentu, buka `build/DuniaMinecraft.exe` secara langsung. Launcher menjalankan source lokal saat ini; untuk mengambil perbaikan dari GitHub, lakukan `git pull` terlebih dahulu.
+`Mainkan.cmd` juga mengarah ke launcher source yang sama. Untuk memainkan hasil export tertentu, buka `build/voxelstride.exe` secara langsung. Launcher menjalankan source lokal saat ini; untuk mengambil perbaikan dari GitHub, lakukan `git pull` terlebih dahulu.
 
 ## Baru di versi 0.4.0: Lembah & Air Terjun
 
@@ -105,15 +105,15 @@ Controller harus dikenali Windows. Untuk Xbox 360 wireless diperlukan receiver y
 
 ## Penyimpanan
 
-Folder save: `%APPDATA%\DuniaMinecraft\`.
+Folder save: `%APPDATA%\voxelstride\`.
 
-- Dunia Klasik: `world.json` (lokasi lama tidak dipindah).
+- Dunia Klasik: `world.json`.
 - Desa Pertanian: `worlds\desa-pertanian.json`.
 - Lembah & Air Terjun: `worlds\lembah-air-terjun.json`.
 - Cadangan terakhir masing-masing: nama file dengan akhiran `.bak`.
 - Sebelum membuka save klasik lama untuk pertama kali, game membuat salinan satu kali **`world.json.pre-v0.3.bak`**, tanpa menimpa salinan tersebut pada sesi berikutnya. Kegagalan membuat backup membatalkan pemuatan.
 
-Save v0.1/v0.2 tetap terbaca di slot Klasik; save kedua dunia dari v0.3 juga tetap terbaca. Semua ID bahan lama serta generator klasik/desa dipertahankan. Format save tetap versi 3, menyimpan identitas/ukuran dunia, seed, perubahan blok, posisi, arah kamera, hotbar, dan posisi hewan; dunia lembah memerlukan metadata tinggi 80 dan generator 3. EXE v0.3 tidak mengenali slot lembah; EXE v0.1/v0.2 tidak memahami format save versi 3. Gunakan backup jika hendak kembali ke versi lama. Sensitivitas kamera berlaku selama sesi berjalan.
+Save v0.1/v0.2 tetap terbaca di slot Klasik; save kedua dunia dari v0.3 juga tetap terbaca. Saat pertama kali dijalankan, voxelstride menyalin save lama dari folder aplikasi sebelumnya ke folder save baru tanpa menimpa berkas yang sudah ada. Semua ID bahan lama serta generator klasik/desa dipertahankan. Format save tetap versi 3, menyimpan identitas/ukuran dunia, seed, perubahan blok, posisi, arah kamera, hotbar, dan posisi hewan; dunia lembah memerlukan metadata tinggi 80 dan generator 3. EXE v0.3 tidak mengenali slot lembah; EXE v0.1/v0.2 tidak memahami format save versi 3. Gunakan backup jika hendak kembali ke versi lama. Sensitivitas kamera berlaku selama sesi berjalan.
 
 Jika save utama rusak, game mencoba cadangan dunia yang sama. File rusak diarsipkan dengan akhiran `.corrupt-...` sebelum diganti. Jika keduanya tidak valid atau identitas dunia tidak cocok, pemuatan dibatalkan dengan pesan; dunia tersebut tidak direset otomatis. Uji otomatis menggunakan folder sementara terpisah dan tidak membaca/menulis save permainan Anda.
 
@@ -125,7 +125,7 @@ Buka `project.godot` dengan **Godot 4.6.1 Standard**. Tidak memerlukan .NET maup
 powershell -ExecutionPolicy Bypass -File .\tools\build.ps1
 ```
 
-Script mengunduh Godot portabel (~80 MB) dan export templates resmi (~1,25 GB, hanya pertama kali), memverifikasi SHA-512, menjalankan tes, lalu menghasilkan `build/DuniaMinecraft.exe` dengan PCK tertanam dan ZIP distribusi. Alat tersimpan di `.tools/`; tidak ada instalasi sistem. Setelah alat tersedia, tambahkan `-SkipSetup` untuk membangun tanpa unduhan.
+Script mengunduh Godot portabel (~80 MB) dan export templates resmi (~1,25 GB, hanya pertama kali), memverifikasi SHA-512, menjalankan tes, lalu menghasilkan `build/voxelstride.exe` dengan PCK tertanam dan ZIP distribusi. Alat tersimpan di `.tools/`; tidak ada instalasi sistem. Setelah alat tersedia, tambahkan `-SkipSetup` untuk membangun tanpa unduhan.
 
 Pengujian langsung:
 
@@ -139,7 +139,7 @@ Pengujian langsung:
 & .\.tools\godot\Godot_v4.6.1-stable_win64_console.exe --path . -- --capture-valley
 ```
 
-Tes inti memeriksa 450 kondisi; tes dunia 95 kondisi; tes lembah 73 kondisi: **618 pemeriksaan**. Cakupannya termasuk determinisme generator, pelestarian rumah/kandang, jalan terhubung dengan beda tinggi maksimum satu blok, sambungan air sungai–danau, pemuatan pemandangan jauh, edit di atas batas tinggi lama, serta backup dan isolasi save. Smoke test menjalankan gerak pemain, kontrol Xbox sintetis, pergantian ketiga dunia, AI hewan, pause animasi/suara air terjun, collision di area jauh, pemulihan posisi/hotbar/blok tinggi, serta pembatalan perpindahan jika save gagal. Smoke test yang sama dijalankan pada EXE hasil export.
+Tes inti memeriksa 450 kondisi; tes dunia 96 kondisi; tes lembah 73 kondisi: **619 pemeriksaan**. Cakupannya termasuk determinisme generator, pelestarian rumah/kandang, jalan terhubung dengan beda tinggi maksimum satu blok, sambungan air sungai–danau, pemuatan pemandangan jauh, edit di atas batas tinggi lama, serta backup, migrasi, dan isolasi save. Smoke test menjalankan gerak pemain, kontrol Xbox sintetis, pergantian ketiga dunia, AI hewan, pause animasi/suara air terjun, collision di area jauh, pemulihan posisi/hotbar/blok tinggi, serta pembatalan perpindahan jika save gagal. Smoke test yang sama dijalankan pada EXE hasil export.
 
 `--capture` menghasilkan empat PNG klasik/material. `--capture-farm` menghasilkan lima PNG pilihan dunia/desa/ternak/ladang. `--capture-valley` menghasilkan tujuh PNG pilihan dunia, gameplay, air terjun, tinjauan LOD, teras, danau dan menara di `artifacts/`, serta pengukuran frame pada dua adegan setelah pemuatan. Semua mode otomatis memakai data uji terpisah tanpa membaca/menulis save pemain. Waktu pemuatan setiap dunia dicatat di log.
 

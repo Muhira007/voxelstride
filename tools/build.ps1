@@ -59,9 +59,9 @@ Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_core.gd')
 Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_worlds.gd')
 Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_valley.gd')
 Invoke-Godot @('--headless', '--path', '.', '--', '--smoke-test')
-Invoke-Godot @('--headless', '--path', '.', '--export-release', 'Windows Desktop', 'build/DuniaMinecraft.exe')
+Invoke-Godot @('--headless', '--path', '.', '--export-release', 'Windows Desktop', 'build/voxelstride.exe')
 
-$buildExe = Join-Path $projectRoot 'build\DuniaMinecraft.exe'
+$buildExe = Join-Path $projectRoot 'build\voxelstride.exe'
 $smokeLog = Join-Path $projectRoot 'artifacts\export-smoke.log'
 $process = Start-Process -FilePath $buildExe -WorkingDirectory (Join-Path $projectRoot 'build') -ArgumentList @('--headless', '--log-file', ('"' + $smokeLog + '"'), '--', '--smoke-test') -WindowStyle Hidden -Wait -PassThru
 $code = $process.ExitCode
@@ -72,6 +72,6 @@ Copy-Item -LiteralPath 'README.md', 'LICENSE-Godot.txt', 'THIRD-PARTY-Godot.txt'
 New-Item -ItemType Directory -Force -Path 'build\docs' | Out-Null
 Copy-Item -LiteralPath 'docs\gameplay.png', 'docs\materials.png', 'docs\inventory.png', 'docs\CATALOG.md', 'docs\DESA-PERTANIAN.md', 'docs\worlds.png', 'docs\farm-overview.png', 'docs\farm-gameplay.png', 'docs\farm-animals.png', 'docs\farm-fields.png' -Destination 'build\docs' -Force
 Copy-Item -LiteralPath 'docs\LEMBAH-AIR-TERJUN.md', 'docs\valley-gameplay.png', 'docs\valley-waterfall.png', 'docs\valley-overview.png', 'docs\valley-terraces.png', 'docs\valley-lake.png', 'docs\valley-tower.png' -Destination 'build\docs' -Force
-Compress-Archive -LiteralPath $buildExe, 'build\README.md', 'build\LICENSE-Godot.txt', 'build\THIRD-PARTY-Godot.txt', 'build\docs' -DestinationPath 'build\DuniaMinecraft-Windows-x64.zip' -Force
+Compress-Archive -LiteralPath $buildExe, 'build\README.md', 'build\LICENSE-Godot.txt', 'build\THIRD-PARTY-Godot.txt', 'build\docs' -DestinationPath 'build\voxelstride-Windows-x64.zip' -Force
 Write-Host "Build selesai: $buildExe"
 Get-FileHash -LiteralPath $buildExe -Algorithm SHA256 | Format-List

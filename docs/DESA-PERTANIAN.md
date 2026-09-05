@@ -40,7 +40,7 @@ Air adalah material dekoratif transparan tanpa aliran, daya apung, atau mekanik 
 
 ## Save dan performa
 
-Save desa: `%APPDATA%\DuniaMinecraft\worlds\desa-pertanian.json`. Cadangan terakhir: `.json.bak`. Dunia Klasik tetap di `world.json`; salinan awalnya dilindungi oleh `world.json.pre-v0.3.bak` saat pertama kali dibuka di versi ini.
+Save desa: `%APPDATA%\voxelstride\worlds\desa-pertanian.json`. Cadangan terakhir: `.json.bak`. Dunia Klasik tetap di `world.json`; salinan awalnya dilindungi oleh `world.json.pre-v0.3.bak` saat pertama kali dibuka di versi ini.
 
 Pergantian dunia melalui **Start/Esc → Simpan & pilih dunia** menyimpan dunia yang ditinggalkan terlebih dahulu. Jika gagal, game tidak mengganti dunia. Save rusak yang tidak dapat dipulihkan tidak direset otomatis.
 

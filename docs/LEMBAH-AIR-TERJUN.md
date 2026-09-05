@@ -50,7 +50,7 @@ Pembuatan mesh, terutama saat berlari melintasi chunk atau mengedit banyak blok,
 
 ## Save dan laporan bug
 
-Save: `%APPDATA%\DuniaMinecraft\worlds\lembah-air-terjun.json`, dengan backup `.json.bak`. Save mencatat identitas dunia, tinggi 80, generator 3, edit blok, pemain, hotbar, dan hewan. Memilih slot lagi melanjutkan save, bukan membuat ulang kemajuan. Efek air terjun mengulang waktu animasinya ketika dunia dimuat kembali.
+Save: `%APPDATA%\voxelstride\worlds\lembah-air-terjun.json`, dengan backup `.json.bak`. Save mencatat identitas dunia, tinggi 80, generator 3, edit blok, pemain, hotbar, dan hewan. Memilih slot lagi melanjutkan save, bukan membuat ulang kemajuan. Efek air terjun mengulang waktu animasinya ketika dunia dimuat kembali.
 
 Generator Klasik dan Desa Pertanian tidak diubah. Tes otomatis memakai folder sementara sendiri dan tidak membaca/menulis file permainan Anda. Jangan membuka save lembah dengan EXE v0.3 atau lebih lama.
 
