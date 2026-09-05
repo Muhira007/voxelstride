@@ -10,7 +10,18 @@ Prototipe game voxel 3D **single-player offline** untuk Windows 10/11, dengan ko
 2. Ekstrak ZIP, lalu buka `DuniaMinecraft.exe`. Tidak perlu memasang Godot atau menjalankan server.
 3. Pilih **Masuk ke dunia** dengan mouse atau tombol **A** pada controller.
 
-Pada folder pengembangan yang sudah dibangun, buka `Mainkan.cmd` atau `build/DuniaMinecraft.exe`.
+## Jalankan langsung dari repo (Windows)
+
+Clone atau unduh dan ekstrak repository ini, lalu klik dua kali:
+
+- **`Mainkan.bat`**: menjalankan game langsung dari source di folder repo. Setelah kode diperbaiki, tutup game dan klik lagi untuk mencoba perubahan terbaru, tanpa build/export ulang.
+- **`Debug.bat`**: menjalankan source yang sama dengan konsol error langsung. Setelah game ditutup, konsol tetap terbuka sampai Anda menekan Enter.
+
+Jika Godot belum tersedia, launcher otomatis mengunduh editor portabel resmi (~80 MB, sekali saja), memverifikasi SHA-512, dan menaruhnya di `.tools/`. Tidak memerlukan instalasi sistem maupun export templates. Setelah itu bisa berjalan offline. Di komputer ini Godot sudah tersedia.
+
+Log setiap sesi disimpan terpisah di **`artifacts/logs/game-<tanggal-jam>.log`**; log persiapan aset memakai awalan `import-`. Jika menemukan bug, sertakan log sesi terkait dan langkah untuk mengulang masalahnya. Folder log tidak di-push ke GitHub.
+
+`Mainkan.cmd` juga mengarah ke launcher source yang sama. Untuk memainkan hasil export tertentu, buka `build/DuniaMinecraft.exe` secara langsung. Launcher menjalankan source lokal saat ini; untuk mengambil perbaikan dari GitHub, lakukan `git pull` terlebih dahulu.
 
 ## Fitur versi 0.1.0
 
@@ -83,6 +94,7 @@ Uji tampilan awal pada Intel UHD Graphics 620, 1280 × 720: 60 FPS setelah pemua
 - `scripts/main.gd`: alur permainan, antarmuka, interaksi, audio, dan integrasi save.
 - `scripts/hud.gd`, `blocks.gd`, `game_input.gd`, `save_store.gd`: HUD, tekstur, pemetaan input, dan penyimpanan.
 - `tests/test_core.gd`, `tools/build.ps1`: validasi dan build yang dapat diulang.
+- `Mainkan.bat`, `Debug.bat`, `tools/run.ps1`: launcher source, bootstrap editor, dan log per sesi.
 
 Godot menggunakan lisensi MIT; lihat `LICENSE-Godot.txt` dan `THIRD-PARTY-Godot.txt`. Referensi: [dokumentasi controller](https://docs.godotengine.org/en/stable/tutorials/inputs/controllers_gamepads_joysticks.html), [export Windows](https://docs.godotengine.org/en/4.6/tutorials/export/exporting_for_windows.html).
 
