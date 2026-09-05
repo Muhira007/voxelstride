@@ -6,6 +6,7 @@ const HUD = preload("res://scripts/hud.gd")
 const GameInput = preload("res://scripts/game_input.gd")
 const SaveStore = preload("res://scripts/save_store.gd")
 const Blocks = preload("res://scripts/blocks.gd")
+const Inventory = preload("res://scripts/inventory.gd")
 
 var world: Node3D
 var player: CharacterBody3D
@@ -22,6 +23,8 @@ var menu_state := "loading"
 var loaded := false
 var started := false
 var selected := 0
+var hotbar: Array[int] = [1,2,3,4,5,6,7,8]
+var inventory: Control
 var target: Dictionary = {}
 var action_cooldown := 0.0
 var autosave_time := 0.0
@@ -33,8 +36,10 @@ var sound: AudioStreamPlayer
 var tone_break: AudioStreamWAV
 var tone_place: AudioStreamWAV
 var smoke_failures := 0
+var light_timer := 0.0
 
 func _ready() -> void:
+	Blocks.setup()
 	GameInput.setup()
 	get_tree().auto_accept_quit = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -63,6 +68,7 @@ func _ready() -> void:
 	player.pitch = -0.16
 	if not saved.is_empty(): _restore_player(saved)
 	_build_selection()
+	_select_block(selected)
 	loaded = true
 	_show_menu("title")
 	if automation:
@@ -90,8 +96,8 @@ func _build_environment() -> void:
 	env.ambient_light_energy = 0.42
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.fog_enabled = true
-	env.fog_light_color = Color("c3d9cb")
-	env.fog_density = 0.003
+	env.fog_light_color = Color("becfda")
+	env.fog_density = 0.0015
 	env_node.environment = env
 	add_child(env_node)
 	var sun := DirectionalLight3D.new()
@@ -141,7 +147,7 @@ func _build_interface() -> void:
 	left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	left.add_theme_constant_override("separation", 14)
 	columns.add_child(left)
-	var badge := _label("PROTOTIPE 01     /     VOXEL SANDBOX", 13, Color("ebc76b"))
+	var badge := _label("PROTOTIPE 02     /     %d MATERIAL" % Blocks.catalog().size(), 13, Color("ebc76b"))
 	left.add_child(badge)
 	menu_title = _label("DUNIA\nMINECRAFT", 58)
 	menu_title.add_theme_constant_override("line_spacing", -8)
@@ -183,6 +189,10 @@ func _build_interface() -> void:
 	footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	footer.position = Vector2(64,-28)
 	overlay.add_child(footer)
+	inventory = Inventory.new()
+	canvas.add_child(inventory)
+	inventory.block_chosen.connect(_choose_inventory)
+	inventory.closed.connect(_start_playing)
 
 func _label(text: String, font_size: int, color: Color = Color("f4f0dd")) -> Label:
 	var label := Label.new()
@@ -224,27 +234,16 @@ func _show_menu(state: String) -> void:
 	held_block.visible = false
 	overlay.show()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if state == "inventory":
+		overlay.hide()
+		inventory.open(selected,hotbar)
+		return
+	inventory.hide()
 	for child in menu_box.get_children():
 		menu_box.remove_child(child)
 		child.queue_free()
 	var first: Button
 	match state:
-		"inventory":
-			menu_title.text = "PILIH BLOK"
-			menu_title.add_theme_font_size_override("font_size", 42)
-			menu_subtitle.text = "Persediaan tak terbatas. Bebaskan idemu."
-			var grid := GridContainer.new()
-			grid.columns = 2
-			grid.add_theme_constant_override("h_separation", 10)
-			grid.add_theme_constant_override("v_separation", 10)
-			menu_box.add_child(grid)
-			for i in 8:
-				var button := _button("%d   %s" % [i+1, Blocks.NAMES[i+1]], _choose_inventory.bind(i), i == selected)
-				menu_box.remove_child(button)
-				grid.add_child(button)
-				button.custom_minimum_size = Vector2(190,52)
-				if i == selected: first = button
-			_button("Kembali bermain", _start_playing)
 		"pause":
 			menu_title.text = "TARIK NAPAS."
 			menu_title.add_theme_font_size_override("font_size", 46)
@@ -268,6 +267,7 @@ func _start_playing() -> void:
 	started = true
 	menu_state = "playing"
 	overlay.hide()
+	inventory.hide()
 	player.enabled = true
 	world.set_process(true)
 	hud.active = true
@@ -277,15 +277,18 @@ func _start_playing() -> void:
 	if first_start:
 		hud.notify("Selamat datang! Dunia ini milik imajinasimu." if startup_message.is_empty() else startup_message)
 
-func _choose_inventory(index: int) -> void:
-	_select_block(index)
+func _choose_inventory(block: int) -> void:
+	if not Blocks.is_placeable(block): return
+	hotbar[selected] = block
+	_select_block(selected)
 	_start_playing()
 
 func _select_block(index: int) -> void:
 	selected = posmod(index, 8)
 	hud.selected = selected
+	hud.hotbar = hotbar
 	if held_block != null:
-		(held_block.material_override as StandardMaterial3D).albedo_color = Blocks.COLORS[selected + 1]
+		held_block.mesh = world.make_block_mesh(hotbar[selected])
 
 func _cycle_sensitivity() -> void:
 	player.sensitivity += 0.6
@@ -313,14 +316,14 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if menu_state != "playing":
+		if menu_state == "inventory":
+			if inventory.handle_input(event): get_viewport().set_input_as_handled()
+			return
 		if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
 			var focused := get_viewport().gui_get_focus_owner()
 			if focused is Button:
 				focused.pressed.emit()
 				get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("inventory") and menu_state == "inventory":
-			_start_playing()
-			get_viewport().set_input_as_handled()
 		elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B and menu_state != "title":
 			_start_playing()
 			get_viewport().set_input_as_handled()
@@ -339,6 +342,10 @@ func _process(delta: float) -> void:
 	animation_time += delta
 	action_cooldown = maxf(0, action_cooldown - delta)
 	autosave_time += delta
+	light_timer -= delta
+	if light_timer <= 0:
+		world.update_local_lights(player.position)
+		light_timer = 0.5
 	hud.controller = controller_mode
 	hud.position_text = "%d / %d / %d" % [player.position.x, player.position.y, player.position.z]
 	target = world.raycast(player.camera.global_position, -player.camera.global_basis.z)
@@ -370,7 +377,7 @@ func _edit_block(place: bool) -> bool:
 	elif world.get_block(cell) == 9:
 		hud.notify("Batuan dasar tidak dapat dihancurkan.")
 		return false
-	if world.set_block(cell, selected + 1 if place else 0):
+	if world.set_block(cell, hotbar[selected] if place else 0):
 		held_block.rotation.x = -0.3 if place else 0.3
 		sound.stream = tone_place if place else tone_break
 		sound.play()
@@ -403,15 +410,8 @@ func _build_selection() -> void:
 	outline.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(outline)
 	held_block = MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3.ONE * 0.28
-	held_block.mesh = box
-	var held_material := StandardMaterial3D.new()
-	held_material.albedo_color = Blocks.COLORS[selected + 1]
-	held_material.roughness = 1
-	held_material.no_depth_test = true
-	held_material.render_priority = 10
-	held_block.material_override = held_material
+	held_block.mesh = world.make_block_mesh(hotbar[selected])
+	held_block.scale = Vector3.ONE * 0.28
 	held_block.position = Vector3(0.58,-0.40,-0.85)
 	held_block.rotation_degrees = Vector3(-12,22,-8)
 	held_block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -443,6 +443,7 @@ func _tone(frequency: float, duration: float, noise: bool) -> AudioStreamWAV:
 	return wav
 
 func _restore_player(saved: Dictionary) -> void:
+	hotbar = Blocks.restore_hotbar(saved.get("hotbar"))
 	var p: Array = saved["position"]
 	player.position = Vector3(clampf(p[0],0.35,World.SIZE-0.35), clampf(p[1],1,World.HEIGHT+5), clampf(p[2],0.35,World.SIZE-0.35))
 	player.rotation.y = wrapf(saved["yaw"], -PI, PI)
@@ -458,7 +459,7 @@ func _restore_player(saved: Dictionary) -> void:
 
 func _save_world() -> bool:
 	if not loaded or not started or automation: return true
-	var data := {"version": SaveStore.VERSION, "generator": World.GENERATOR_VERSION, "seed": world.world_seed, "changes": world.changes, "position": [player.position.x, player.position.y, player.position.z], "yaw": player.rotation.y, "pitch": player.pitch, "selected": selected}
+	var data := {"version": SaveStore.VERSION, "generator": World.GENERATOR_VERSION, "seed": world.world_seed, "changes": world.changes, "position": [player.position.x, player.position.y, player.position.z], "yaw": player.rotation.y, "pitch": player.pitch, "selected": selected, "hotbar":hotbar}
 	var success := store.write_save(data)
 	hud.notify("Dunia tersimpan." if success else store.last_error)
 	return success
@@ -534,12 +535,12 @@ func _smoke_test() -> void:
 	Input.action_release("look_right")
 	_smoke_check(absf(player.rotation.y - yaw_before) > 0.1, "right stick look rotates camera")
 	_show_menu("inventory")
-	if player.enabled or not overlay.visible:
+	if player.enabled or not inventory.visible:
 		push_error("SMOKE FAIL: inventori tidak menghentikan pemain")
 		get_tree().quit(1)
 		return
-	_choose_inventory(6)
-	if selected != 6 or not player.enabled:
+	_choose_inventory(Blocks.id("quartz_bricks"))
+	if hotbar[selected] != Blocks.id("quartz_bricks") or not player.enabled:
 		push_error("SMOKE FAIL: pilihan inventori tidak diterapkan")
 		get_tree().quit(1)
 		return
@@ -553,8 +554,35 @@ func _smoke_test() -> void:
 	# Exercise actual controller events through the menu, not just direct callbacks.
 	await _simulate_pad_button(JOY_BUTTON_BACK)
 	_smoke_check(menu_state == "inventory", "Xbox Back opens inventory")
+	var previous_page: int = inventory.page
+	await _simulate_pad_button(JOY_BUTTON_RIGHT_SHOULDER)
+	_smoke_check(inventory.page == previous_page+1, "Xbox RB changes inventory page")
+	await _simulate_pad_axis(JOY_AXIS_TRIGGER_RIGHT,0.6)
+	await _simulate_pad_axis(JOY_AXIS_TRIGGER_RIGHT,0.9)
+	_smoke_check(inventory.category == 1, "held trigger changes category only once")
+	await _simulate_pad_axis(JOY_AXIS_TRIGGER_RIGHT,0.0)
+	await _simulate_pad_button(JOY_BUTTON_DPAD_RIGHT)
+	_smoke_check(inventory.cursor == 1, "D-pad navigates inventory grid")
+	var chosen: int = inventory.matches[inventory.page*Inventory.PAGE_SIZE+inventory.cursor]
 	await _simulate_pad_button(JOY_BUTTON_A)
-	_smoke_check(menu_state == "playing", "Xbox A selects focused inventory item")
+	_smoke_check(menu_state == "playing" and hotbar[selected] == chosen, "Xbox A assigns focused material to active slot")
+	await _simulate_pad_button(JOY_BUTTON_BACK)
+	inventory.search.grab_focus()
+	var letter := InputEventKey.new()
+	letter.physical_keycode = KEY_E
+	letter.keycode = KEY_E
+	letter.unicode = 101
+	letter.pressed = true
+	Input.parse_input_event(letter)
+	await get_tree().process_frame
+	_smoke_check(menu_state == "inventory" and inventory.search.text == "e", "typing E in search does not close inventory")
+	inventory.search.text = "quartz_bricks"
+	inventory.refresh()
+	_smoke_check(inventory.matches == [Blocks.id("quartz_bricks")], "search isolates an exact material key")
+	await _simulate_pad_button(JOY_BUTTON_A)
+	_smoke_check(hotbar[selected] == Blocks.id("quartz_bricks"), "controller selects search result while search has focus")
+	target = {"previous":Vector3i(48,30,48),"cell":Vector3i(48,29,48),"block":3}
+	_smoke_check(_edit_block(true) and world.get_block(Vector3i(48,30,48)) == Blocks.id("quartz_bricks"), "new catalog block places through gameplay")
 	await _simulate_pad_button(JOY_BUTTON_START)
 	_smoke_check(menu_state == "pause", "Xbox Start opens pause")
 	await _simulate_pad_button(JOY_BUTTON_B)
@@ -579,6 +607,13 @@ func _simulate_pad_button(button_index: int) -> void:
 	Input.parse_input_event(event)
 	await get_tree().process_frame
 
+func _simulate_pad_axis(axis: int, value: float) -> void:
+	var event := InputEventJoypadMotion.new()
+	event.axis = axis
+	event.axis_value = value
+	Input.parse_input_event(event)
+	await get_tree().process_frame
+
 func _capture_screenshots() -> void:
 	for i in 180: await get_tree().process_frame
 	player.rotation.y = -2.4
@@ -597,5 +632,6 @@ func _capture_screenshots() -> void:
 	for i in 5: await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("res://artifacts/inventory.png")
-	print("CAPTURE PASS: gameplay, title, inventory")
+	await preload("res://scripts/material_showcase.gd").capture(self)
+	print("CAPTURE PASS: gameplay, title, inventory, materials")
 	get_tree().quit()

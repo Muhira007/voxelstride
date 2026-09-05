@@ -5,6 +5,7 @@ const INK := Color("132b30")
 const CREAM := Color("f4f0dd")
 const GOLD := Color("ebc76b")
 var selected := 0
+var hotbar: Array[int] = [1,2,3,4,5,6,7,8]
 var active := false
 var controller := false
 var target_name := ""
@@ -61,9 +62,9 @@ func _draw() -> void:
 			draw_style_box(_panel(Color("3e5351")), rect)
 			draw_rect(Rect2(rect.position.x, rect.end.y - 3, rect.size.x, 3), GOLD)
 		else: draw_style_box(_panel(Color(0.14,0.23,0.24,0.7)), rect)
-		_draw_block(rect.position + Vector2(31,30), Blocks.COLORS[i+1], 18)
+		draw_texture_rect(Blocks.icon(hotbar[i]),Rect2(rect.position+Vector2(7,6),Vector2(48,48)),false)
 		_text(rect.position + Vector2(5,14), str(i + 1), 10, GOLD if i == selected else Color("9faeaa"))
-	_center(Vector2(w / 2,h-128), Blocks.NAMES[selected + 1] + "  /  TAK TERBATAS", 15)
+	_center(Vector2(w / 2,h-128), Blocks.NAMES[hotbar[selected]] + "  /  TAK TERBATAS", 15)
 	_center(Vector2(w / 2,h-15), "LB / RB atau D-pad  ·  Pilih blok" if controller else "1–8 atau scroll  ·  Pilih blok", 12, Color("d6dfd0"))
 	var hint := "Y  Hancurkan    X  Pasang    BACK  Inventori    START  Menu" if controller else "Klik kiri  Hancurkan    Klik kanan  Pasang    E  Inventori    Esc  Menu"
 	var hint_width := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28

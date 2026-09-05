@@ -1,6 +1,6 @@
 extends RefCounted
 
-const VERSION := 1
+const VERSION := 2
 const PATH := "user://world.json"
 var last_error := ""
 
@@ -21,7 +21,10 @@ func _read_valid(path: String) -> Dictionary:
 	if parser.parse(file.get_as_text()) != OK: return {}
 	var data: Variant = parser.data
 	if not data is Dictionary: return {}
-	if data.get("version") != VERSION or data.get("generator") != 1: return {}
+	if (data.get("version") != 1 and data.get("version") != VERSION) or data.get("generator") != 1: return {}
+	if data.get("version") == 2:
+		var hotbar: Variant = data.get("hotbar")
+		if not hotbar is Array or hotbar.size() != 8: return {}
 	if not (data.get("seed") is float or data.get("seed") is int): return {}
 	if not data.get("changes") is Dictionary: return {}
 	var pos: Variant = data.get("position")

@@ -25,8 +25,11 @@ var chunks: Dictionary = {}
 var dirty_chunks: Array[Vector2i] = []
 var world_seed := 20260905
 var material: StandardMaterial3D
+var emissive_cells: Dictionary = {}
+var light_pool: Array[OmniLight3D] = []
 
 func _init() -> void:
+	Blocks.setup()
 	blocks.resize(SIZE * HEIGHT * SIZE)
 
 func inside(p: Vector3i) -> bool:
@@ -45,6 +48,7 @@ func generate(seed_value: int) -> void:
 	world_seed = seed_value
 	blocks.fill(0)
 	changes.clear()
+	emissive_cells.clear()
 	var noise := FastNoiseLite.new()
 	noise.seed = world_seed
 	noise.frequency = 0.023
@@ -90,14 +94,19 @@ func spawn_position() -> Vector3:
 	return Vector3(SIZE / 2.0 + 0.5, surface_height(SIZE / 2, SIZE / 2) + 2.1, SIZE / 2.0 + 0.5)
 
 func set_block(p: Vector3i, block: int) -> bool:
-	if not inside(p) or p.y == 0 or block < 0 or block > 8 or get_block(p) == block: return false
+	if not inside(p) or p.y == 0 or not Blocks.valid_edit(block) or get_block(p) == block: return false
 	_put(p, block)
+	if block > 0 and Blocks.entries[block]["emissive"]: emissive_cells[p] = block
+	else: emissive_cells.erase(p)
 	changes[str(index_of(p))] = block
 	_mark_dirty(Vector2i(p.x / CHUNK, p.z / CHUNK))
 	if p.x % CHUNK == 0: _mark_dirty(Vector2i(p.x / CHUNK - 1, p.z / CHUNK))
 	if p.x % CHUNK == CHUNK - 1: _mark_dirty(Vector2i(p.x / CHUNK + 1, p.z / CHUNK))
 	if p.z % CHUNK == 0: _mark_dirty(Vector2i(p.x / CHUNK, p.z / CHUNK - 1))
 	if p.z % CHUNK == CHUNK - 1: _mark_dirty(Vector2i(p.x / CHUNK, p.z / CHUNK + 1))
+	# Corner shading also samples diagonally adjacent chunks.
+	if p.x % CHUNK in [0, CHUNK-1] and p.z % CHUNK in [0, CHUNK-1]:
+		_mark_dirty(Vector2i(p.x/CHUNK + (-1 if p.x%CHUNK == 0 else 1), p.z/CHUNK + (-1 if p.z%CHUNK == 0 else 1)))
 	return true
 
 func _mark_dirty(key: Vector2i) -> void:
@@ -109,10 +118,9 @@ func _process(_delta: float) -> void:
 
 func build_chunk(key: Vector2i) -> void:
 	if material == null: material = Blocks.make_material()
-	var vertices := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var uvs := PackedVector2Array()
-	var colors := PackedColorArray()
+	var groups: Array = []
+	for group in 2: groups.append([PackedVector3Array(), PackedVector3Array(), PackedVector2Array(), PackedColorArray()])
+	var collision := PackedVector3Array()
 	var origin := Vector3i(key.x * CHUNK, 0, key.y * CHUNK)
 	for lx in CHUNK:
 		for lz in CHUNK:
@@ -120,16 +128,21 @@ func build_chunk(key: Vector2i) -> void:
 				var p := origin + Vector3i(lx,y,lz)
 				var block := get_block(p)
 				if block == 0: continue
+				var group := 1 if Blocks.is_transparent(block) else 0
 				for f in 6:
-					if get_block(p + DIRECTIONS[f]) != 0: continue
+					if not Blocks.face_visible(block, get_block(p + DIRECTIONS[f])): continue
 					var tile: int = Blocks.tile_for(block, DIRECTIONS[f])
-					var shade: float = FACE_LIGHT[f]
-					for i in TRIANGLES:
-						vertices.append(Vector3(lx,y,lz) + CORNERS[f][i])
-						normals.append(Vector3(DIRECTIONS[f]))
-						var uv: Vector2 = UV_CORNERS[i]
-						uvs.append(Vector2((tile + lerpf(0.035, 0.965, uv.x)) / Blocks.TILES, lerpf(0.035, 0.965, uv.y)))
-						colors.append(Color(shade, shade, shade))
+					var corner_shades: Array[float] = []
+					for corner in CORNERS[f]: corner_shades.append(vertex_shade(p, DIRECTIONS[f], corner) * FACE_LIGHT[f])
+					var triangles := TRIANGLES if corner_shades[0]+corner_shades[2] >= corner_shades[1]+corner_shades[3] else [0,3,1,1,3,2]
+					for i in triangles:
+						var vertex: Vector3 = Vector3(lx,y,lz) + CORNERS[f][i]
+						groups[group][0].append(vertex)
+						groups[group][1].append(Vector3(DIRECTIONS[f]))
+						groups[group][2].append(Blocks.uv_for(tile, UV_CORNERS[i]))
+						var shade: float = corner_shades[i]
+						groups[group][3].append(Color(shade, shade, shade))
+						collision.append(vertex)
 	var node: StaticBody3D
 	if chunks.has(key):
 		node = chunks[key]
@@ -144,21 +157,54 @@ func build_chunk(key: Vector2i) -> void:
 		chunks[key] = node
 	var mesh_node := node.get_child(0) as MeshInstance3D
 	var collider := node.get_child(1) as CollisionShape3D
-	if vertices.is_empty():
+	if collision.is_empty():
 		mesh_node.mesh = null
 		collider.shape = null
 		return
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_TEX_UV] = uvs
-	arrays[Mesh.ARRAY_COLOR] = colors
 	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, material)
+	for group in 2:
+		if groups[group][0].is_empty(): continue
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = groups[group][0]
+		arrays[Mesh.ARRAY_NORMAL] = groups[group][1]
+		arrays[Mesh.ARRAY_TEX_UV] = groups[group][2]
+		arrays[Mesh.ARRAY_COLOR] = groups[group][3]
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.surface_set_material(mesh.get_surface_count()-1, Blocks.make_material(group == 1))
 	mesh_node.mesh = mesh
-	collider.shape = mesh.create_trimesh_shape()
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(collision)
+	collider.shape = shape
+
+func vertex_shade(p: Vector3i, normal: Vector3i, corner: Vector3) -> float:
+	var tangents: Array[Vector3i] = []
+	for axis in 3:
+		if normal[axis] == 0:
+			var tangent := Vector3i.ZERO
+			tangent[axis] = -1 if corner[axis] < 0.5 else 1
+			tangents.append(tangent)
+	var outside := p + normal
+	var a := int(Blocks.occludes(get_block(outside+tangents[0])))
+	var b := int(Blocks.occludes(get_block(outside+tangents[1])))
+	var c := int(Blocks.occludes(get_block(outside+tangents[0]+tangents[1])))
+	return 0.52 if a == 1 and b == 1 else 1.0 - 0.16 * (a+b+c)
+
+func make_block_mesh(block: int) -> ArrayMesh:
+	if material == null: material = Blocks.make_material()
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var held_material := Blocks.make_material(Blocks.is_transparent(block)).duplicate() as StandardMaterial3D
+	held_material.no_depth_test = true
+	held_material.render_priority = 10
+	surface.set_material(held_material)
+	for f in 6:
+		for i in TRIANGLES:
+			surface.set_normal(Vector3(DIRECTIONS[f]))
+			surface.set_uv(Blocks.uv_for(Blocks.tile_for(block,DIRECTIONS[f]), UV_CORNERS[i]))
+			surface.set_color(Color.WHITE)
+			surface.add_vertex(CORNERS[f][i]-Vector3.ONE*0.5)
+	return surface.commit()
 
 func raycast(origin: Vector3, direction: Vector3, reach: float = 6.0) -> Dictionary:
 	# Grid traversal hits the current voxel data immediately, even before a mesh rebuild.
@@ -192,6 +238,28 @@ func apply_changes(saved: Dictionary) -> void:
 		var index := int(key_string)
 		var value: Variant = saved[key]
 		if not (value is float or value is int): continue
-		if index >= SIZE * SIZE and index < blocks.size() and float(value) == int(value) and int(value) >= 0 and int(value) <= 8:
+		if index >= SIZE * SIZE and index < blocks.size() and is_finite(float(value)) and float(value) == int(value) and Blocks.valid_edit(int(value)):
 			blocks[index] = int(value)
 			changes[str(index)] = int(value)
+			var cell := Vector3i(index % SIZE, index / (SIZE*SIZE), (index / SIZE) % SIZE)
+			if int(value) > 0 and Blocks.entries[int(value)]["emissive"]: emissive_cells[cell] = int(value)
+			else: emissive_cells.erase(cell)
+
+func update_local_lights(view_position: Vector3) -> void:
+	var nearby: Array[Vector3i] = []
+	for cell: Vector3i in emissive_cells:
+		if Vector3(cell).distance_squared_to(view_position) < 24*24: nearby.append(cell)
+	nearby.sort_custom(func(a: Vector3i,b: Vector3i): return Vector3(a).distance_squared_to(view_position) < Vector3(b).distance_squared_to(view_position))
+	var count := mini(8,nearby.size())
+	while light_pool.size() < count:
+		var light := OmniLight3D.new()
+		light.omni_range = 5
+		light.light_energy = 0.85
+		light.shadow_enabled = false
+		add_child(light)
+		light_pool.append(light)
+	for i in light_pool.size():
+		light_pool[i].visible = i < count
+		if i < count:
+			light_pool[i].position = Vector3(nearby[i]) + Vector3.ONE * 0.5
+			light_pool[i].light_color = Blocks.COLORS[emissive_cells[nearby[i]]].lightened(0.25)

@@ -1,6 +1,13 @@
 extends RefCounted
 
 static func setup() -> void:
+	# Explicit bindings also work in headless/exported runs where built-in UI defaults differ.
+	_bind("ui_accept", [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE], [JOY_BUTTON_A])
+	_bind("ui_cancel", [KEY_ESCAPE], [JOY_BUTTON_B])
+	_bind("ui_left", [KEY_LEFT], [JOY_BUTTON_DPAD_LEFT], JOY_AXIS_LEFT_X, -1)
+	_bind("ui_right", [KEY_RIGHT], [JOY_BUTTON_DPAD_RIGHT], JOY_AXIS_LEFT_X, 1)
+	_bind("ui_up", [KEY_UP], [JOY_BUTTON_DPAD_UP], JOY_AXIS_LEFT_Y, -1)
+	_bind("ui_down", [KEY_DOWN], [JOY_BUTTON_DPAD_DOWN], JOY_AXIS_LEFT_Y, 1)
 	_bind("move_forward", [KEY_W], [], JOY_AXIS_LEFT_Y, -1)
 	_bind("move_back", [KEY_S], [], JOY_AXIS_LEFT_Y, 1)
 	_bind("move_left", [KEY_A], [], JOY_AXIS_LEFT_X, -1)
@@ -20,6 +27,10 @@ static func setup() -> void:
 	_bind("place_block", [], [JOY_BUTTON_X])
 	_bind("save_world", [KEY_F5], [])
 	_bind("fullscreen", [KEY_F11], [])
+	_bind("inventory_previous_page", [KEY_PAGEUP], [JOY_BUTTON_LEFT_SHOULDER])
+	_bind("inventory_next_page", [KEY_PAGEDOWN], [JOY_BUTTON_RIGHT_SHOULDER])
+	_bind("inventory_previous_category", [], [], JOY_AXIS_TRIGGER_LEFT, 1)
+	_bind("inventory_next_category", [], [], JOY_AXIS_TRIGGER_RIGHT, 1)
 	_mouse("break_block", MOUSE_BUTTON_LEFT)
 	_mouse("place_block", MOUSE_BUTTON_RIGHT)
 	_mouse("next_block", MOUSE_BUTTON_WHEEL_DOWN)

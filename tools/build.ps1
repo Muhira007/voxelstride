@@ -60,7 +60,7 @@ $output | ForEach-Object { Write-Host $_ }
 if ($code -ne 0 -or -not ($output -match 'SMOKE PASS:')) { throw 'Pengujian EXE hasil export gagal.' }
 Copy-Item -LiteralPath 'README.md', 'LICENSE-Godot.txt', 'THIRD-PARTY-Godot.txt' -Destination 'build' -Force
 New-Item -ItemType Directory -Force -Path 'build\docs' | Out-Null
-Copy-Item -LiteralPath 'docs\gameplay.png' -Destination 'build\docs\gameplay.png' -Force
+Copy-Item -LiteralPath 'docs\gameplay.png', 'docs\materials.png', 'docs\inventory.png', 'docs\CATALOG.md' -Destination 'build\docs' -Force
 Compress-Archive -LiteralPath $buildExe, 'build\README.md', 'build\LICENSE-Godot.txt', 'build\THIRD-PARTY-Godot.txt', 'build\docs' -DestinationPath 'build\DuniaMinecraft-Windows-x64.zip' -Force
 Write-Host "Build selesai: $buildExe"
 Get-FileHash -LiteralPath $buildExe -Algorithm SHA256 | Format-List
