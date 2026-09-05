@@ -7,6 +7,7 @@ const GOLD := Color("ebc76b")
 var selected := 0
 var hotbar: Array[int] = [1,2,3,4,5,6,7,8]
 var active := false
+var world_title := "DUNIA MINECRAFT"
 var controller := false
 var target_name := ""
 var position_text := ""
@@ -42,7 +43,7 @@ func _draw() -> void:
 	var h := size.y
 	draw_style_box(_panel(Color(0.055,0.12,0.14,0.85)), Rect2(24,22,254,65))
 	draw_rect(Rect2(24,22,4,65), GOLD)
-	_text(Vector2(42,48), "DUNIA MINECRAFT", 18)
+	_text(Vector2(42,48), world_title, 18)
 	_text(Vector2(42,71), "KREATIF  /  OFFLINE", 12, Color("b9c9bf"))
 	var stats := "%s   ·   %d FPS" % [position_text, Engine.get_frames_per_second()]
 	_text(Vector2(w - font.get_string_size(stats, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x - 28, 42), stats, 14)

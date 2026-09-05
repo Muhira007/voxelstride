@@ -1,6 +1,8 @@
 extends Node3D
 
 const Blocks = preload("res://scripts/blocks.gd")
+const Farm = preload("res://scripts/farm_layout.gd")
+const Shapes = preload("res://scripts/voxel_shapes.gd")
 const SIZE := 96
 const HEIGHT := 40
 const CHUNK := 16
@@ -27,16 +29,30 @@ var world_seed := 20260905
 var material: StandardMaterial3D
 var emissive_cells: Dictionary = {}
 var light_pool: Array[OmniLight3D] = []
+var size := SIZE
+var world_id := "classic"
+var generator_version := GENERATOR_VERSION
+var streaming := false
+var build_queue: Array[Vector2i] = []
+var stream_center := Vector2i(-100,-100)
+const STREAM_RADIUS := 3
+
+func configure(id: String) -> void:
+	assert(id in ["classic","farm"])
+	world_id = id
+	size = 192 if id == "farm" else SIZE
+	generator_version = 2 if id == "farm" else GENERATOR_VERSION
+	blocks.resize(size*HEIGHT*size)
 
 func _init() -> void:
 	Blocks.setup()
 	blocks.resize(SIZE * HEIGHT * SIZE)
 
 func inside(p: Vector3i) -> bool:
-	return p.x >= 0 and p.x < SIZE and p.z >= 0 and p.z < SIZE and p.y >= 0 and p.y < HEIGHT
+	return p.x >= 0 and p.x < size and p.z >= 0 and p.z < size and p.y >= 0 and p.y < HEIGHT
 
 func index_of(p: Vector3i) -> int:
-	return p.x + SIZE * (p.z + SIZE * p.y)
+	return p.x + size * (p.z + size * p.y)
 
 func get_block(p: Vector3i) -> int:
 	return blocks[index_of(p)] if inside(p) else 0
@@ -49,6 +65,9 @@ func generate(seed_value: int) -> void:
 	blocks.fill(0)
 	changes.clear()
 	emissive_cells.clear()
+	if world_id == "farm":
+		Farm.generate(self)
+		return
 	var noise := FastNoiseLite.new()
 	noise.seed = world_seed
 	noise.frequency = 0.023
@@ -91,6 +110,7 @@ func surface_height(x: int, z: int) -> int:
 	return 0
 
 func spawn_position() -> Vector3:
+	if world_id == "farm": return Vector3(96.5,16.1,112.5)
 	return Vector3(SIZE / 2.0 + 0.5, surface_height(SIZE / 2, SIZE / 2) + 2.1, SIZE / 2.0 + 0.5)
 
 func set_block(p: Vector3i, block: int) -> bool:
@@ -110,17 +130,43 @@ func set_block(p: Vector3i, block: int) -> bool:
 	return true
 
 func _mark_dirty(key: Vector2i) -> void:
-	if key.x < 0 or key.y < 0 or key.x >= SIZE / CHUNK or key.y >= SIZE / CHUNK: return
+	if key.x < 0 or key.y < 0 or key.x >= size / CHUNK or key.y >= size / CHUNK: return
 	if not dirty_chunks.has(key): dirty_chunks.append(key)
 
 func _process(_delta: float) -> void:
-	if not dirty_chunks.is_empty(): build_chunk(dirty_chunks.pop_front())
+	while not dirty_chunks.is_empty():
+		var key: Vector2i = dirty_chunks.pop_front()
+		if not streaming or chunks.has(key):
+			build_chunk(key)
+			return
+	if not build_queue.is_empty(): build_chunk(build_queue.pop_front())
+
+func update_stream(view_position: Vector3, force: bool = false) -> void:
+	if not streaming: return
+	var center := Vector2i(floori(view_position.x/CHUNK),floori(view_position.z/CHUNK))
+	if center == stream_center and not force: return
+	stream_center = center
+	build_queue.clear()
+	for x in range(maxi(0,center.x-STREAM_RADIUS),mini(size/CHUNK,center.x+STREAM_RADIUS+1)):
+		for z in range(maxi(0,center.y-STREAM_RADIUS),mini(size/CHUNK,center.y+STREAM_RADIUS+1)):
+			var key := Vector2i(x,z)
+			if not chunks.has(key): build_queue.append(key)
+	build_queue.sort_custom(func(a: Vector2i,b: Vector2i): return a.distance_squared_to(center) < b.distance_squared_to(center))
+	for key: Vector2i in chunks.keys():
+		if maxi(absi(key.x-center.x),absi(key.y-center.y)) > STREAM_RADIUS+1:
+			remove_child(chunks[key])
+			chunks[key].queue_free()
+			chunks.erase(key)
+
+func collision_ready(at: Vector3) -> bool:
+	return not streaming or chunks.has(Vector2i(floori(at.x/CHUNK),floori(at.z/CHUNK)))
 
 func build_chunk(key: Vector2i) -> void:
 	if material == null: material = Blocks.make_material()
 	var groups: Array = []
 	for group in 2: groups.append([PackedVector3Array(), PackedVector3Array(), PackedVector2Array(), PackedColorArray()])
 	var collision := PackedVector3Array()
+	var special: Dictionary = {}
 	var origin := Vector3i(key.x * CHUNK, 0, key.y * CHUNK)
 	for lx in CHUNK:
 		for lz in CHUNK:
@@ -128,6 +174,13 @@ func build_chunk(key: Vector2i) -> void:
 				var p := origin + Vector3i(lx,y,lz)
 				var block := get_block(p)
 				if block == 0: continue
+				if Blocks.shape_of(block) != "cube":
+					if not special.has(block): special[block] = []
+					special[block].append(Vector3(lx,y,lz))
+					if Blocks.is_solid(block):
+						for f in 6:
+							for i in TRIANGLES: collision.append(Vector3(lx,y,lz)+CORNERS[f][i])
+					continue
 				var group := 1 if Blocks.is_transparent(block) else 0
 				for f in 6:
 					if not Blocks.face_visible(block, get_block(p + DIRECTIONS[f])): continue
@@ -142,7 +195,7 @@ func build_chunk(key: Vector2i) -> void:
 						groups[group][2].append(Blocks.uv_for(tile, UV_CORNERS[i]))
 						var shade: float = corner_shades[i]
 						groups[group][3].append(Color(shade, shade, shade))
-						collision.append(vertex)
+						if Blocks.is_solid(block): collision.append(vertex)
 	var node: StaticBody3D
 	if chunks.has(key):
 		node = chunks[key]
@@ -157,10 +210,21 @@ func build_chunk(key: Vector2i) -> void:
 		chunks[key] = node
 	var mesh_node := node.get_child(0) as MeshInstance3D
 	var collider := node.get_child(1) as CollisionShape3D
-	if collision.is_empty():
+	for child in node.get_children().slice(2):
+		node.remove_child(child)
+		child.queue_free()
+	for block: int in special:
+		var batch := MultiMeshInstance3D.new()
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.mesh = Shapes.mesh_for(block)
+		multimesh.instance_count = special[block].size()
+		for i in special[block].size(): multimesh.set_instance_transform(i,Transform3D(Basis.IDENTITY,special[block][i]))
+		batch.multimesh = multimesh
+		batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if not Blocks.is_solid(block) else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		node.add_child(batch)
+	if groups[0][0].is_empty() and groups[1][0].is_empty():
 		mesh_node.mesh = null
-		collider.shape = null
-		return
 	var mesh := ArrayMesh.new()
 	for group in 2:
 		if groups[group][0].is_empty(): continue
@@ -172,10 +236,12 @@ func build_chunk(key: Vector2i) -> void:
 		arrays[Mesh.ARRAY_COLOR] = groups[group][3]
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count()-1, Blocks.make_material(group == 1))
-	mesh_node.mesh = mesh
-	var shape := ConcavePolygonShape3D.new()
-	shape.set_faces(collision)
-	collider.shape = shape
+	mesh_node.mesh = mesh if mesh.get_surface_count() > 0 else null
+	if collision.is_empty(): collider.shape = null
+	else:
+		var shape := ConcavePolygonShape3D.new()
+		shape.set_faces(collision)
+		collider.shape = shape
 
 func vertex_shade(p: Vector3i, normal: Vector3i, corner: Vector3) -> float:
 	var tangents: Array[Vector3i] = []
@@ -191,6 +257,19 @@ func vertex_shade(p: Vector3i, normal: Vector3i, corner: Vector3) -> float:
 	return 0.52 if a == 1 and b == 1 else 1.0 - 0.16 * (a+b+c)
 
 func make_block_mesh(block: int) -> ArrayMesh:
+	if Blocks.shape_of(block) != "cube":
+		var source := Shapes.mesh_for(block)
+		var arrays := source.surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for i in vertices.size(): vertices[i] -= Vector3.ONE*0.5
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+		var mat := source.surface_get_material(0).duplicate() as StandardMaterial3D
+		mat.no_depth_test = true
+		mat.render_priority = 10
+		mesh.surface_set_material(0,mat)
+		return mesh
 	if material == null: material = Blocks.make_material()
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -238,10 +317,10 @@ func apply_changes(saved: Dictionary) -> void:
 		var index := int(key_string)
 		var value: Variant = saved[key]
 		if not (value is float or value is int): continue
-		if index >= SIZE * SIZE and index < blocks.size() and is_finite(float(value)) and float(value) == int(value) and Blocks.valid_edit(int(value)):
+		if index >= size * size and index < blocks.size() and is_finite(float(value)) and float(value) == int(value) and Blocks.valid_edit(int(value)):
 			blocks[index] = int(value)
 			changes[str(index)] = int(value)
-			var cell := Vector3i(index % SIZE, index / (SIZE*SIZE), (index / SIZE) % SIZE)
+			var cell := Vector3i(index % size, index / (size*size), (index / size) % size)
 			if int(value) > 0 and Blocks.entries[int(value)]["emissive"]: emissive_cells[cell] = int(value)
 			else: emissive_cells.erase(cell)
 

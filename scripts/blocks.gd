@@ -104,10 +104,21 @@ static func setup() -> void:
 		["copper","Tembaga","b57e62"], ["exposed_copper","Tembaga Terpapar","a18a70"], ["weathered_copper","Tembaga Lapuk","6f9684"], ["oxidized_copper","Tembaga Teroksidasi","559c88"],
 		["iron_block","Blok Besi","c0c6c4"], ["gold_block","Blok Emas","d7b768"], ["diamond_block","Blok Berlian","71b8b5"], ["emerald_block","Blok Zamrud","58947c"]
 	]: _add(row[0], row[1], "Logam", row[2], "metal")
+	# Append-only registry: every released ID above remains unchanged.
+	_add("farm_soil", "Tanah Ladang", "Alam", "765035", "farmland")
+	_add("water", "Air Kolam", "Alam", "4e9eb2", "water", true)
+	_add("hay_bale", "Bal Jerami", "Bangunan", "c3a354", "hay")
+	_add("pumpkin", "Labu", "Alam", "cd8839", "pumpkin")
+	_add("apple_leaves", "Daun Berbuah Apel", "Alam", "58804a", "apple_leaves")
+	_add("wheat_crop", "Tanaman Gandum", "Alam", "c5b05c", "crop", false, false, "crop")
+	_add("carrot_crop", "Tanaman Wortel", "Alam", "62a34c", "crop", false, false, "crop")
+	_add("potato_crop", "Tanaman Kentang", "Alam", "7b9c4c", "crop", false, false, "crop")
+	_add("oak_fence", "Pagar Oak", "Kayu", "a58454", "fence", false, false, "fence")
+	_add("meadow_flower", "Bunga Padang", "Alam", "dcad8a", "crop", false, false, "crop")
 
-static func _add(key: String, label: String, category: String, color: String, pattern: String, transparent: bool = false, emissive: bool = false) -> void:
+static func _add(key: String, label: String, category: String, color: String, pattern: String, transparent: bool = false, emissive: bool = false, shape: String = "cube") -> void:
 	lookup[key] = entries.size()
-	entries.append({"key":key, "name":label, "category":category, "color":Color(color), "pattern":pattern, "transparent":transparent, "emissive":emissive})
+	entries.append({"key":key, "name":label, "category":category, "color":Color(color), "pattern":pattern, "transparent":transparent, "emissive":emissive, "shape":shape})
 	NAMES.append(label)
 	COLORS.append(Color(color))
 
@@ -126,10 +137,16 @@ static func is_transparent(block: int) -> bool:
 	return block > 0 and block < entries.size() and entries[block]["transparent"]
 
 static func occludes(block: int) -> bool:
-	return block != 0 and not is_transparent(block)
+	return block != 0 and shape_of(block) == "cube" and not is_transparent(block)
+
+static func shape_of(block: int) -> String:
+	return entries[block]["shape"]
+
+static func is_solid(block: int) -> bool:
+	return block != 0 and shape_of(block) != "crop" and entries[block]["key"] != "water"
 
 static func face_visible(block: int, neighbor: int) -> bool:
-	return neighbor == 0 or (is_transparent(neighbor) and not is_transparent(block))
+	return neighbor == 0 or shape_of(neighbor) != "cube" or (is_transparent(neighbor) and not is_transparent(block))
 
 static func catalog(category: String = "Semua", search: String = "") -> Array[int]:
 	setup()

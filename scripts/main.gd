@@ -7,6 +7,7 @@ const GameInput = preload("res://scripts/game_input.gd")
 const SaveStore = preload("res://scripts/save_store.gd")
 const Blocks = preload("res://scripts/blocks.gd")
 const Inventory = preload("res://scripts/inventory.gd")
+const Herd = preload("res://scripts/farm_herd.gd")
 
 var world: Node3D
 var player: CharacterBody3D
@@ -37,51 +38,137 @@ var tone_break: AudioStreamWAV
 var tone_place: AudioStreamWAV
 var smoke_failures := 0
 var light_timer := 0.0
+var active_world_id := ""
+var herd: Node3D
+var loading_world := false
+var automation_save_root := ""
+var environment: Environment
+
+func world_name(id: String) -> String:
+	return "Desa Pertanian" if id == "farm" else "Dunia Klasik"
 
 func _ready() -> void:
 	Blocks.setup()
 	GameInput.setup()
 	get_tree().auto_accept_quit = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	automation = OS.get_cmdline_user_args().has("--smoke-test") or OS.get_cmdline_user_args().has("--capture")
+	automation = OS.get_cmdline_user_args().has("--smoke-test") or OS.get_cmdline_user_args().has("--capture") or OS.get_cmdline_user_args().has("--capture-farm")
 	_build_environment()
 	_build_interface()
 	_build_audio()
 	Input.joy_connection_changed.connect(_controller_changed)
 	controller_mode = not Input.get_connected_joypads().is_empty()
-	world = World.new()
-	add_child(world)
-	var saved := {} if automation else store.read_save()
-	startup_message = store.last_error
-	world.generate(int(saved.get("seed", 20260905)))
-	if not saved.is_empty(): world.apply_changes(saved["changes"])
-	for x in World.SIZE / World.CHUNK:
-		for z in World.SIZE / World.CHUNK:
-			world.build_chunk(Vector2i(x,z))
-			progress_label.text = "Menyiapkan dunia… %d%%" % int((x * 6 + z + 1) / 36.0 * 100)
-			if not automation: await get_tree().process_frame
-	player = Player.new()
-	player.world = world
-	add_child(player)
-	player.respawn()
-	player.rotation.y = -2.4
-	player.pitch = -0.16
-	if not saved.is_empty(): _restore_player(saved)
-	_build_selection()
-	_select_block(selected)
 	loaded = true
-	_show_menu("title")
+	_show_menu("worlds")
 	if automation:
-		await get_tree().physics_frame
-		_start_playing()
+		if OS.get_cmdline_user_args().has("--capture-farm"):
+			await preload("res://scripts/farm_verification.gd").capture(self)
+			return
+		await _choose_world("classic")
 		if OS.get_cmdline_user_args().has("--smoke-test"):
 			await _smoke_test()
 		else:
 			await _capture_screenshots()
 
+func _choose_world(id: String) -> bool:
+	if loading_world or id not in SaveStore.WORLD_IDS: return false
+	if active_world_id == id and is_instance_valid(world):
+		_start_playing()
+		return true
+	if not _save_world():
+		menu_subtitle.text = store.last_error+" Dunia belum diganti."
+		return false
+	var base := "user://" if automation_save_root.is_empty() else automation_save_root
+	var saved := {}
+	if not automation or not automation_save_root.is_empty():
+		if not store.prepare_world(id,base):
+			menu_subtitle.text = store.last_error
+			return false
+		saved = store.read_world(id,base)
+		startup_message = store.last_error
+		if saved.is_empty() and not store.last_error.is_empty():
+			menu_subtitle.text = store.last_error+" Pulihkan save sebelum membuka dunia ini."
+			return false
+	else: startup_message = ""
+	loading_world = true
+	print("WORLD LOAD: "+world_name(id))
+	_show_menu("loading")
+	loaded = false
+	progress_label.text = "Membuat lingkungan…"
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for node in [herd,player,world,outline]:
+		if is_instance_valid(node):
+			remove_child(node)
+			node.queue_free()
+	herd = null
+	player = null
+	world = null
+	outline = null
+	held_block = null
+	active_world_id = id
+	for cloud in get_tree().get_nodes_in_group("world_clouds"):
+		var original: Vector3 = cloud.get_meta("original_position")
+		cloud.position = Vector3(original.x*1.6,original.y+55,original.z*1.6) if id == "farm" else original
+	started = false
+	selected = 0
+	hotbar = Blocks.restore_hotbar(null)
+	target.clear()
+	autosave_time = 0
+	light_timer = 0
+	world = World.new()
+	world.configure(id)
+	world.streaming = id == "farm"
+	world.set_process(false)
+	add_child(world)
+	world.generate(int(saved.get("seed",20260905)))
+	if not saved.is_empty(): world.apply_changes(saved["changes"])
+	player = Player.new()
+	player.world = world
+	add_child(player)
+	player.respawn()
+	player.rotation.y = 0 if id == "farm" else -2.4
+	player.pitch = -0.10
+	player.camera.far = 125 if id == "farm" else 180
+	if not saved.is_empty(): _restore_player(saved)
+	var queue: Array[Vector2i] = []
+	if world.streaming:
+		world.update_stream(player.position)
+		queue.assign(world.build_queue)
+		world.build_queue.clear()
+	else:
+		for x in world.size / World.CHUNK:
+			for z in world.size / World.CHUNK: queue.append(Vector2i(x,z))
+	var total := queue.size()
+	for i in total:
+		world.build_chunk(queue[i])
+		progress_label.text = "%s · Menyiapkan area %d / %d" % [world_name(id),i+1,total]
+		await get_tree().process_frame
+	if id == "farm":
+		herd = Herd.new()
+		add_child(herd)
+		herd.populate(world,saved.get("animals",[]))
+		herd.view_position = player.position
+	_build_selection()
+	_select_block(selected)
+	hud.world_title = world_name(id).to_upper()
+	environment.fog_density = 0.009 if id == "farm" else 0.0015
+	environment.ambient_light_energy = 0.60 if id == "farm" else 0.42
+	loaded = true
+	loading_world = false
+	await get_tree().physics_frame
+	_start_playing()
+	print("WORLD READY: %s, %d chunks" % [world_name(id),world.chunks.size()])
+	return true
+
+func _world_picker() -> void:
+	if _save_world(): _show_menu("worlds")
+	else: menu_subtitle.text = store.last_error
+
 func _build_environment() -> void:
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
+	environment = env
 	var sky := Sky.new()
 	var sky_material := ProceduralSkyMaterial.new()
 	sky_material.sky_top_color = Color("659fbd")
@@ -119,8 +206,10 @@ func _build_environment() -> void:
 		cloud.mesh = box
 		cloud.material_override = cloud_material
 		cloud.position = Vector3(rng.randf_range(-35,130), rng.randf_range(34,42), rng.randf_range(-35,130))
+		cloud.set_meta("original_position",cloud.position)
 		cloud.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(cloud)
+		cloud.add_to_group("world_clouds")
 
 func _build_interface() -> void:
 	var canvas := CanvasLayer.new()
@@ -147,12 +236,13 @@ func _build_interface() -> void:
 	left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	left.add_theme_constant_override("separation", 14)
 	columns.add_child(left)
-	var badge := _label("PROTOTIPE 02     /     %d MATERIAL" % Blocks.catalog().size(), 13, Color("ebc76b"))
+	var badge := _label("PROTOTIPE 03     /     DUA DUNIA", 13, Color("ebc76b"))
 	left.add_child(badge)
 	menu_title = _label("DUNIA\nMINECRAFT", 58)
 	menu_title.add_theme_constant_override("line_spacing", -8)
 	left.add_child(menu_title)
 	menu_subtitle = _label("Temukan tempatmu. Bangun sesukamu.", 18, Color("b9ccc0"))
+	menu_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(menu_subtitle)
 	var spacer := Control.new()
 	spacer.custom_minimum_size.y = 8
@@ -184,7 +274,7 @@ func _build_interface() -> void:
 	help.add_child(_label("KEYBOARD + MOUSE", 12, Color("a9bfb3")))
 	help.add_child(_label("WASD  Gerak    Mouse  Melihat\nSpace  Lompat   Ctrl  Jongkok\nShift  Lari         E  Inventori\nKlik kiri / kanan  Ubah blok\n1–8 / Scroll  Pilih   Esc  Menu\nF5  Simpan       F11  Layar penuh", 15))
 	help.add_child(HSeparator.new())
-	help.add_child(_label("Offline · Save otomatis setiap 30 detik\nDunia 96 × 96 · Blok tak terbatas", 12, Color("a9bfb3")))
+	help.add_child(_label("Offline · Save terpisah untuk tiap dunia\nKlasik 96 × 96 · Desa 192 × 192", 12, Color("a9bfb3")))
 	var footer := _label("Dibuat dengan Godot  •  Proyek independen, tidak berafiliasi dengan Mojang atau Microsoft.", 12, Color("a9bfb3"))
 	footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	footer.position = Vector2(64,-28)
@@ -227,11 +317,12 @@ func _button(text: String, callback: Callable, primary: bool = false) -> Button:
 
 func _show_menu(state: String) -> void:
 	menu_state = state
-	player.enabled = false
-	world.set_process(false)
+	if is_instance_valid(player): player.enabled = false
+	if is_instance_valid(world): world.set_process(false)
+	if is_instance_valid(herd): herd.pause()
 	hud.active = false
-	outline.visible = false
-	held_block.visible = false
+	if is_instance_valid(outline): outline.visible = false
+	if is_instance_valid(held_block): held_block.visible = false
 	overlay.show()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if state == "inventory":
@@ -244,6 +335,22 @@ func _show_menu(state: String) -> void:
 		child.queue_free()
 	var first: Button
 	match state:
+		"loading":
+			menu_title.text = "MENYIAPKAN\nDUNIAMU…"
+			menu_title.add_theme_font_size_override("font_size",42)
+			menu_subtitle.text = "Pemuatan bertahap. Save lama tetap terpisah."
+			progress_label = _label("",18,Color("ebc76b"))
+			menu_box.add_child(progress_label)
+		"worlds":
+			menu_title.text = "PILIH\nDUNIAMU."
+			menu_title.add_theme_font_size_override("font_size",52)
+			menu_subtitle.text = "Dua lingkungan. Dua cerita. Save terpisah."
+			first = _button("Dunia Klasik   ·   96 × 96",_choose_world.bind("classic"))
+			menu_box.add_child(_label("Dunia lama dan semua bangunan Anda.",14,Color("a9bfb3")))
+			_button("Desa Pertanian   ·   192 × 192",_choose_world.bind("farm"),true)
+			menu_box.add_child(_label("6 rumah · kebun · kandang · 20 hewan",14,Color("a9bfb3")))
+			if is_instance_valid(world): _button("Kembali ke "+world_name(active_world_id),_start_playing)
+			_button("Keluar",_quit)
 		"pause":
 			menu_title.text = "TARIK NAPAS."
 			menu_title.add_theme_font_size_override("font_size", 46)
@@ -252,6 +359,7 @@ func _show_menu(state: String) -> void:
 			_button("Simpan dunia", _save_from_menu)
 			_button("Kembali ke titik awal", _respawn)
 			_button("Kecepatan kamera: %.1f×" % (player.sensitivity / 2.4), _cycle_sensitivity)
+			_button("Simpan & pilih dunia", _world_picker)
 			_button("Simpan & keluar", _quit)
 		_:
 			menu_title.text = "DUNIA\nMINECRAFT"
@@ -263,6 +371,7 @@ func _show_menu(state: String) -> void:
 	if first != null: first.grab_focus()
 
 func _start_playing() -> void:
+	if not is_instance_valid(world) or not is_instance_valid(player) or loading_world: return
 	var first_start := not started
 	started = true
 	menu_state = "playing"
@@ -270,6 +379,8 @@ func _start_playing() -> void:
 	inventory.hide()
 	player.enabled = true
 	world.set_process(true)
+	world.update_stream(player.position)
+	if is_instance_valid(herd): herd.enabled = true
 	hud.active = true
 	held_block.visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if not automation else Input.MOUSE_MODE_VISIBLE
@@ -312,7 +423,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("pause"):
 		if menu_state == "playing": _show_menu("pause")
-		elif menu_state != "title": _start_playing()
+		elif menu_state != "title" and menu_state != "loading": _start_playing()
 		get_viewport().set_input_as_handled()
 		return
 	if menu_state != "playing":
@@ -321,7 +432,7 @@ func _input(event: InputEvent) -> void:
 			return
 		if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
 			var focused := get_viewport().gui_get_focus_owner()
-			if focused is Button:
+			if focused is Button and not focused.disabled:
 				focused.pressed.emit()
 				get_viewport().set_input_as_handled()
 		elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B and menu_state != "title":
@@ -345,7 +456,9 @@ func _process(delta: float) -> void:
 	light_timer -= delta
 	if light_timer <= 0:
 		world.update_local_lights(player.position)
+		world.update_stream(player.position)
 		light_timer = 0.5
+	if is_instance_valid(herd): herd.view_position = player.position
 	hud.controller = controller_mode
 	hud.position_text = "%d / %d / %d" % [player.position.x, player.position.y, player.position.z]
 	target = world.raycast(player.camera.global_position, -player.camera.global_basis.z)
@@ -373,6 +486,7 @@ func _edit_block(place: bool) -> bool:
 			hud.notify("Batas dunia tercapai.")
 			return false
 		if player.overlaps_block(cell): return false
+		if is_instance_valid(herd) and herd.overlaps(cell): return false
 		if world.get_block(cell) != 0: return false
 	elif world.get_block(cell) == 9:
 		hud.notify("Batuan dasar tidak dapat dihancurkan.")
@@ -445,7 +559,7 @@ func _tone(frequency: float, duration: float, noise: bool) -> AudioStreamWAV:
 func _restore_player(saved: Dictionary) -> void:
 	hotbar = Blocks.restore_hotbar(saved.get("hotbar"))
 	var p: Array = saved["position"]
-	player.position = Vector3(clampf(p[0],0.35,World.SIZE-0.35), clampf(p[1],1,World.HEIGHT+5), clampf(p[2],0.35,World.SIZE-0.35))
+	player.position = Vector3(clampf(p[0],0.35,world.size-0.35), clampf(p[1],1,World.HEIGHT+5), clampf(p[2],0.35,world.size-0.35))
 	player.rotation.y = wrapf(saved["yaw"], -PI, PI)
 	player.pitch = clampf(saved["pitch"],-1.53,1.53)
 	player.camera.rotation.x = player.pitch
@@ -453,14 +567,15 @@ func _restore_player(saved: Dictionary) -> void:
 	for x in range(floori(player.position.x - 0.3), floori(player.position.x + 0.3) + 1):
 		for y in range(floori(player.position.y + 0.05), floori(player.position.y + 1.8) + 1):
 			for z in range(floori(player.position.z - 0.3), floori(player.position.z + 0.3) + 1):
-				if world.get_block(Vector3i(x,y,z)) != 0:
+				if Blocks.is_solid(world.get_block(Vector3i(x,y,z))):
 					player.respawn()
 					return
 
 func _save_world() -> bool:
-	if not loaded or not started or automation: return true
-	var data := {"version": SaveStore.VERSION, "generator": World.GENERATOR_VERSION, "seed": world.world_seed, "changes": world.changes, "position": [player.position.x, player.position.y, player.position.z], "yaw": player.rotation.y, "pitch": player.pitch, "selected": selected, "hotbar":hotbar}
-	var success := store.write_save(data)
+	if not loaded or not started or (automation and automation_save_root.is_empty()): return true
+	var data := {"version": SaveStore.VERSION, "generator": world.generator_version, "world_id":active_world_id,"world_size":world.size,"seed": world.world_seed, "changes": world.changes, "position": [player.position.x, player.position.y, player.position.z], "yaw": player.rotation.y, "pitch": player.pitch, "selected": selected, "hotbar":hotbar,"animals":herd.snapshot() if is_instance_valid(herd) else []}
+	var base := "user://" if automation_save_root.is_empty() else automation_save_root
+	var success := store.write_save(data,store.world_path(active_world_id,base))
 	hud.notify("Dunia tersimpan." if success else store.last_error)
 	return success
 
@@ -587,6 +702,7 @@ func _smoke_test() -> void:
 	_smoke_check(menu_state == "pause", "Xbox Start opens pause")
 	await _simulate_pad_button(JOY_BUTTON_B)
 	_smoke_check(menu_state == "playing", "Xbox B returns from pause")
+	await preload("res://scripts/farm_verification.gd").smoke(self)
 	print("SMOKE %s: collision, movement, jump, crouch, edits, self-placement protection, stick look, controller menus; %d chunks; %d failures" % ["PASS" if smoke_failures == 0 else "FAIL", world.chunks.size(), smoke_failures])
 	get_tree().quit(1 if smoke_failures else 0)
 

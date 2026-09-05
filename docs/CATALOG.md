@@ -1,13 +1,13 @@
-# Katalog bahan v0.2
+# Katalog bahan v0.3
 
-177 bahan yang bisa dipasang, dibagi menjadi tujuh kategori; tab **Semua** menampilkan seluruhnya. Semuanya tersedia tak terbatas dalam mode kreatif. Nama Inggris pada key juga dapat dicari di inventori.
+187 bahan yang bisa dipasang, dibagi menjadi tujuh kategori; tab **Semua** menampilkan seluruhnya. Semuanya tersedia tak terbatas dalam mode kreatif. Nama Inggris pada key juga dapat dicari di inventori. ID 0–178 dari versi sebelumnya tidak berubah.
 
 | Kategori | Jumlah | Isi |
 | --- | ---: | --- |
-| Alam | 23 | Tanah, vegetasi, pasir, salju, es |
+| Alam | 31 | Tanah, vegetasi, pasir, salju, es, tanaman, air dekoratif |
 | Batu | 27 | Batuan mentah, poles, bata, dan pahat |
-| Kayu | 34 | 11 keluarga batang/papan/kupas, serta mosaik bambu |
-| Bangunan | 17 | Bata, sandstone, kuarsa, purpur, resin |
+| Kayu | 35 | 11 keluarga batang/papan/kupas, mosaik bambu, pagar |
+| Bangunan | 18 | Bata, sandstone, kuarsa, purpur, resin, bal jerami |
 | Warna | 48 | Beton, terakota, wol; masing-masing 16 warna |
 | Kaca & Cahaya | 20 | Kaca bening + 16 warna; tiga lampu |
 | Logam | 8 | Empat kondisi tembaga dan empat blok mineral |
@@ -42,6 +42,8 @@ Tembaga, tembaga terpapar, tembaga lapuk, tembaga teroksidasi; blok besi, emas, 
 
 ## Batas implementasi dan kompatibilitas
 
-Ini material kreatif yang terinspirasi kategori Minecraft, bukan salinan aset atau implementasi seluruh mekaniknya. Semua tekstur dibuat secara orisinal melalui kode. Daun masih kubus opak, es tidak licin, pasir tidak jatuh, tembaga tidak berubah otomatis, dan lampu tidak memakai redstone. Belum tersedia slab, stairs, door, cairan, atau orientasi batang horizontal. Kaca memakai alpha blending sederhana; lapisan kaca bertumpuk bisa memiliki keterbatasan pengurutan transparansi.
+Tambahan v0.3, ID 179–188: tanah ladang (`farm_soil`), air kolam (`water`), bal jerami (`hay_bale`), labu (`pumpkin`), daun apel (`apple_leaves`), gandum (`wheat_crop`), wortel (`carrot_crop`), kentang (`potato_crop`), pagar (`oak_fence`), bunga (`meadow_flower`). Tanaman dan pagar memakai bentuk khusus; air tidak memiliki collision solid. Pertumbuhan/panen otomatis dan simulasi cairan belum tersedia.
 
-Generator dunia tidak berubah; bahan tambahan dipilih melalui inventori, bukan otomatis mengganti terrain/bangunan lama. ID 0 adalah udara, 1–8 adalah delapan blok awal, dan 9 adalah bedrock yang dilindungi. Bahan baru menggunakan ID 10–178. Jangan mengubah urutan registry yang sudah dirilis; tambahkan bahan berikutnya di bagian akhir agar save tetap kompatibel. Penyimpanan voxel saat ini memakai satu byte: batas teknis 256 ID termasuk udara/bedrock.
+Ini material kreatif yang terinspirasi kategori Minecraft, bukan salinan aset atau implementasi seluruh mekaniknya. Semua tekstur dibuat secara orisinal melalui kode. Daun masih kubus opak, es tidak licin, pasir tidak jatuh, tembaga tidak berubah otomatis, dan lampu tidak memakai redstone. Belum tersedia slab, stairs khusus, door interaktif, aliran cairan, atau orientasi batang horizontal. Kaca memakai alpha blending sederhana; lapisan kaca bertumpuk bisa memiliki keterbatasan pengurutan transparansi.
+
+Generator Dunia Klasik tidak berubah; Desa Pertanian memakai generator terpisah. ID 0 adalah udara, 1–8 adalah delapan blok awal, dan 9 adalah bedrock yang dilindungi. Bahan baru menggunakan ID 10–188. Jangan mengubah urutan registry yang sudah dirilis; tambahkan bahan berikutnya di bagian akhir agar save tetap kompatibel. Penyimpanan voxel saat ini memakai satu byte: batas teknis 256 ID termasuk udara/bedrock.

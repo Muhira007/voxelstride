@@ -2,13 +2,13 @@
 
 Prototipe game voxel 3D **single-player offline** untuk Windows 10/11, dengan kontrol utama **Xbox 360** dan dukungan keyboard/mouse. Dibuat menggunakan Godot 4.6.1 dan renderer Compatibility.
 
-![Tampilan permainan Dunia Minecraft](docs/gameplay.png)
+![Desa Pertanian dalam game](docs/farm-overview.png)
 
 ## Mainkan
 
 1. Unduh `DuniaMinecraft-Windows-x64.zip` dari [Releases](https://github.com/Muhira007/Dunia-Minecraft/releases).
 2. Ekstrak ZIP, lalu buka `DuniaMinecraft.exe`. Tidak perlu memasang Godot atau menjalankan server.
-3. Pilih **Masuk ke dunia** dengan mouse atau tombol **A** pada controller.
+3. Pilih **Dunia Klasik** atau **Desa Pertanian** dengan mouse atau D-pad dan tombol **A** pada controller.
 
 ## Jalankan langsung dari repo (Windows)
 
@@ -23,12 +23,31 @@ Log setiap sesi disimpan terpisah di **`artifacts/logs/game-<tanggal-jam>.log`**
 
 `Mainkan.cmd` juga mengarah ke launcher source yang sama. Untuk memainkan hasil export tertentu, buka `build/DuniaMinecraft.exe` secara langsung. Launcher menjalankan source lokal saat ini; untuk mengambil perbaikan dari GitHub, lakukan `git pull` terlebih dahulu.
 
-## Fitur versi 0.2.0
+## Baru di versi 0.3.0: pilih dunia & Desa Pertanian
+
+Launcher **Mainkan.bat tetap sama**. Tutup game lama, jalankan kembali, lalu pilih lingkungan di menu awal. Untuk berpindah saat bermain: **Start/Esc → Simpan & pilih dunia**. Perpindahan dibatalkan jika save gagal.
+
+| Dunia | Ukuran | Isi |
+| --- | --- | --- |
+| Dunia Klasik | 96 × 96 × 40 | Dunia lama, generator dan ID blok lama tetap sama. |
+| Desa Pertanian | 192 × 192 × 40 | Empat kali luas klasik, bukan empat kali panjang setiap sisinya. |
+
+Desa Pertanian berisi enam rumah yang bisa dimasuki, sumur, dua kios hasil panen, lumbung jerami, gudang kecil, kincir dekoratif, empat petak tanaman beririgasi, kebun apel, empat kandang, jalan pedesaan, kolam dangkal, jembatan, bunga, dan pepohonan. Padang di barat/selatan desa disisakan untuk membangun. Lihat [panduan desa dan batas mekanik](docs/DESA-PERTANIAN.md).
+
+Ada **20 hewan**: 5 sapi, 5 domba, 4 babi, dan 6 ayam. Mereka berjalan, beristirahat, menggerakkan kaki, menghindari halangan, dan tetap berada dalam wilayah kandang. Posisi/arah hewan tersimpan. Aktivitas dihentikan saat menu dibuka atau pemain jauh; hewan juga memiliki collision.
+
+![Pilihan dunia](docs/worlds.png)
+
+![Empat kandang dan ternak](docs/farm-animals.png)
+
+Dunia desa memakai pemuatan chunk bertahap di dekat pemain, bukan menampilkan seluruh dunia terus-menerus. Batas area dapat terlihat dari tempat tinggi dan perpindahan area dapat menyebabkan jeda singkat saat mesh dibuat. Foto tinjauan udara di atas memuat seluruh dunia khusus untuk pemeriksaan visual, bukan beban rendering permainan normal.
+
+## Fitur permainan
 
 - Dunia berbukit 96 × 96 blok, tinggi maksimum 40 blok, dengan pohon dan area berpasir.
 - Kamera orang pertama; berjalan, berlari, melompat, dan jongkok.
 - Menghancurkan dan memasang blok hingga jarak 6 blok, dengan penanda sasaran.
-- **177 bahan kreatif**: batu/deepslate, 11 keluarga kayu, kuarsa, bata, beton, terakota, wol, kaca, lampu, dan logam. Lihat [katalog lengkap](docs/CATALOG.md).
+- **187 bahan kreatif**: 177 bahan sebelumnya ditambah tanah ladang, air dekoratif, bal jerami, labu, daun apel, gandum, wortel, kentang, pagar, dan bunga. Lihat [katalog lengkap](docs/CATALOG.md).
 - Tekstur orisinal **32 × 32 piksel** (sebelumnya 16 × 16): serat/end-grain kayu, sambungan bata, batu pahat, anyaman wol, serta variasi permukaan tiap bahan.
 - Bayangan sudut antarblok (ambient occlusion), mipmap dan filter anisotropik; ikon inventori dan blok di tangan memakai tekstur sebenarnya.
 - Kaca transparan yang tetap bisa ditabrak/ditargetkan; glowstone, lentera laut, dan shroomlight memancarkan cahaya lokal.
@@ -39,11 +58,11 @@ Log setiap sesi disimpan terpisah di **`artifacts/logs/game-<tanggal-jam>.log`**
 - Suara interaksi, getaran controller jika didukung, serta jeda otomatis ketika controller terlepas.
 - Tekstur piksel dan suara dibuat lewat kode, tanpa aset Minecraft.
 
-Ini masih prototipe kreatif: belum ada survival, crafting, mob, multiplayer, pemilihan banyak dunia, atau dunia tak terbatas. Tidak membutuhkan server maupun koneksi internet untuk bermain.
+Ini masih prototipe kreatif: belum ada survival, crafting, musuh, multiplayer, pembuatan slot dunia bebas, atau dunia tak terbatas. Pilihan dunia saat ini dua lingkungan tetap. Tidak membutuhkan server maupun koneksi internet untuk bermain.
 
 ![Contoh tekstur dan material di dalam engine](docs/materials.png)
 
-Adegan di atas adalah galeri pengujian visual, bukan bangunan yang otomatis dimasukkan ke save pemain. Semua bahan masih berupa kubus penuh; belum ada slab, tangga, pintu, cairan, atau mekanik redstone. Varian tembaga dipilih manual, bukan beroksidasi otomatis. Cahaya lokal dibatasi delapan lampu terdekat agar tetap ringan, tanpa bayangan dinamis lampu.
+Adegan di atas adalah galeri pengujian material, bukan bangunan tambahan di save pemain. Sebagian besar bahan berupa kubus penuh; tanaman dan pagar memakai bentuk khusus. Belum ada slab, tangga khusus, pintu interaktif, simulasi aliran air, atau mekanik redstone. Varian tembaga dipilih manual. Cahaya lokal dibatasi delapan lampu terdekat tanpa bayangan dinamis lampu.
 
 ### Mengganti isi hotbar
 
@@ -77,11 +96,16 @@ Controller harus dikenali Windows. Untuk Xbox 360 wireless diperlukan receiver y
 
 ## Penyimpanan
 
-Save: `%APPDATA%\DuniaMinecraft\world.json`. Cadangan: `world.json.bak`. Simpan salinan file ini untuk memindahkan dunia ke komputer lain. Save menyimpan seed, perubahan blok, posisi, arah kamera, slot pilihan, dan delapan isi hotbar. Sensitivitas kamera berlaku selama sesi berjalan.
+Folder save: `%APPDATA%\DuniaMinecraft\`.
 
-Save v0.1 tetap terbaca: ID blok 0–9 dan generator terrain tidak diubah. Saat disimpan oleh v0.2, format naik ke versi 2. Simpan salinan sebelum mencoba kembali EXE v0.1, karena EXE lama tidak memahami format maupun blok baru.
+- Dunia Klasik: `world.json` (lokasi lama tidak dipindah).
+- Desa Pertanian: `worlds\desa-pertanian.json`.
+- Cadangan terakhir masing-masing: nama file dengan akhiran `.bak`.
+- Sebelum membuka save klasik lama untuk pertama kali, game membuat salinan satu kali **`world.json.pre-v0.3.bak`**, tanpa menimpa salinan tersebut pada sesi berikutnya. Kegagalan membuat backup membatalkan pemuatan.
 
-Jika save utama rusak, game mencoba cadangan. Save rusak diarsipkan dengan akhiran `.corrupt-...` sebelum diganti. Jika kedua save tidak dapat dibaca, game membuka dunia awal dan menampilkan pemberitahuan. Uji otomatis memakai file sementara terpisah dan tidak menulis save permainan.
+Save v0.1/v0.2 tetap terbaca di slot Klasik. Semua ID bahan lama dan generator klasik dipertahankan. Save baru berformat versi 3, menyimpan identitas/ukuran dunia, seed, perubahan blok, posisi, arah kamera, hotbar, dan posisi hewan. Versi EXE lama tidak memahami format ini; gunakan salinan backup jika hendak kembali ke versi lama. Sensitivitas kamera berlaku selama sesi berjalan.
+
+Jika save utama rusak, game mencoba cadangan dunia yang sama. File rusak diarsipkan dengan akhiran `.corrupt-...` sebelum diganti. Jika keduanya tidak valid atau identitas dunia tidak cocok, pemuatan dibatalkan dengan pesan; dunia tersebut tidak direset otomatis. Uji otomatis menggunakan folder sementara terpisah dan tidak membaca/menulis save permainan Anda.
 
 ## Pengembangan dan build Windows
 
@@ -97,13 +121,17 @@ Pengujian langsung:
 
 ```powershell
 & .\.tools\godot\Godot_v4.6.1-stable_win64_console.exe --headless --path . --script tests/test_core.gd
+& .\.tools\godot\Godot_v4.6.1-stable_win64_console.exe --headless --path . --script tests/test_worlds.gd
 & .\.tools\godot\Godot_v4.6.1-stable_win64_console.exe --headless --path . -- --smoke-test
 & .\.tools\godot\Godot_v4.6.1-stable_win64_console.exe --path . -- --capture
+& .\.tools\godot\Godot_v4.6.1-stable_win64_console.exe --path . -- --capture-farm
 ```
 
-Tes inti memeriksa 430 kondisi: seluruh 177 bahan bisa dipasang/dihancurkan, ID lama, pencarian, kaca/mesh/collision, AO, batas lampu, save v1/v2/hotbar/backup, raycast, determinisme, dan input. Smoke test memeriksa gerak, tabrakan, interaksi, serta navigasi inventori/jeda lewat input controller sintetis, termasuk halaman, trigger kategori, pencarian, dan pemasangan bahan baru. Perintah `--capture` menghasilkan empat PNG di `artifacts/`: gameplay, menu, inventori, dan galeri material. Semua mode otomatis memakai dunia terpisah tanpa membaca/menulis save pemain.
+Tes inti memeriksa 450 kondisi; tes dunia memeriksa 95 kondisi tambahan, termasuk luas 4×, layout deterministik, pintu masuk rumah, bentuk tanaman/pagar, collision air, streaming, hewan, backup lama yang identik byte demi byte, serta isolasi save v1/v2/v3. Smoke test menjalankan gerak pemain, kontrol Xbox sintetis, pergantian dunia, gerak dan jeda hewan, perlindungan dari penempatan blok, pemulihan hotbar/posisi, serta pembatalan pergantian dunia ketika save gagal. Smoke test yang sama dijalankan pada EXE hasil export.
 
-Uji tampilan awal pada Intel UHD Graphics 620, 1280 × 720: 60 FPS setelah pemuatan. Ini pengukuran pada satu adegan, bukan jaminan performa di semua perangkat atau dunia yang telah banyak diubah. Diperlukan Windows 64-bit dan driver yang mendukung OpenGL 3.3.
+`--capture` menghasilkan empat PNG klasik/material. `--capture-farm` menghasilkan lima PNG pilihan dunia/desa/ternak/ladang di `artifacts/`. Semua mode otomatis memakai data uji terpisah tanpa membaca/menulis save pemain.
+
+Uji tampilan awal klasik dan Desa Pertanian pada Intel UHD Graphics 620, 1280 × 720: sekitar 59–60 FPS setelah pemuatan. Ini pengukuran adegan awal, bukan jaminan performa saat berjalan melintasi chunk atau di semua perangkat/dunia yang telah banyak diubah. Diperlukan Windows 64-bit dan driver yang mendukung OpenGL 3.3.
 
 ## Struktur
 
@@ -114,6 +142,10 @@ Uji tampilan awal pada Intel UHD Graphics 620, 1280 × 720: 60 FPS setelah pemua
 - `scripts/inventory.gd`, `hud.gd`: perpustakaan bahan, pencarian, paging, dan hotbar.
 - `scripts/game_input.gd`, `save_store.gd`: pemetaan input dan penyimpanan kompatibel v1/v2.
 - `scripts/material_showcase.gd`: galeri visual deterministik, hanya untuk mode `--capture`.
+- `scripts/farm_layout.gd`: generator Desa Pertanian dengan layout tetap, bangunan, kebun, dan kandang.
+- `scripts/farm_animal.gd`, `farm_herd.gd`: model hewan, AI terbatas kandang, pembatasan jarak, dan snapshot save.
+- `scripts/box_geometry.gd`, `voxel_shapes.gd`: geometri orisinal hewan, tanaman, dan pagar; tanaman dirender dalam batch per chunk.
+- `tests/test_worlds.gd`, `scripts/farm_verification.gd`: tes migrasi/save dunia, integrasi desa, dan tangkapan layar.
 - `tests/test_core.gd`, `tools/build.ps1`: validasi dan build yang dapat diulang.
 - `Mainkan.bat`, `Debug.bat`, `tools/run.ps1`: launcher source, bootstrap editor, dan log per sesi.
 

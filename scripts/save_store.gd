@@ -1,12 +1,44 @@
 extends RefCounted
 
-const VERSION := 2
+const VERSION := 3
 const PATH := "user://world.json"
+const WORLD_IDS := ["classic", "farm"]
 var last_error := ""
+
+func world_path(world_id: String, base: String = "user://") -> String:
+	if world_id == "classic": return base.path_join("world.json")
+	if world_id == "farm": return base.path_join("worlds/desa-pertanian.json")
+	return ""
+
+func read_world(world_id: String, base: String = "user://") -> Dictionary:
+	var path := world_path(world_id,base)
+	if path.is_empty():
+		last_error = "Dunia tidak dikenal."
+		return {}
+	var data := read_save(path)
+	if not data.is_empty() and data.get("world_id","classic") != world_id:
+		last_error = "Identitas save tidak cocok. File tidak diubah."
+		return {}
+	return data
+
+func prepare_world(world_id: String, base: String = "user://") -> bool:
+	last_error = ""
+	var path := world_path(world_id,base)
+	if path.is_empty(): return false
+	if DirAccess.make_dir_recursive_absolute(path.get_base_dir()) != OK:
+		last_error = "Folder save dunia tidak dapat disiapkan."
+		return false
+	# Keep the old path; take a one-time snapshot instead of moving or rewriting the player's save.
+	if world_id == "classic" and not FileAccess.file_exists(path+".pre-v0.3.bak"):
+		var source := path if not _read_valid(path).is_empty() else path+".bak"
+		if not _read_valid(source).is_empty() and DirAccess.copy_absolute(source,path+".pre-v0.3.bak") != OK:
+			last_error = "Cadangan dunia lama gagal dibuat; pemuatan dibatalkan."
+			return false
+	return true
 
 func read_save(path: String = PATH) -> Dictionary:
 	last_error = ""
-	if not FileAccess.file_exists(path): return {}
+	if not FileAccess.file_exists(path) and not FileAccess.file_exists(path+".bak"): return {}
 	var result := _read_valid(path)
 	if result.is_empty():
 		result = _read_valid(path + ".bak")
@@ -21,11 +53,21 @@ func _read_valid(path: String) -> Dictionary:
 	if parser.parse(file.get_as_text()) != OK: return {}
 	var data: Variant = parser.data
 	if not data is Dictionary: return {}
-	if (data.get("version") != 1 and data.get("version") != VERSION) or data.get("generator") != 1: return {}
-	if data.get("version") == 2:
+	var version: Variant = data.get("version")
+	if version != 1 and version != 2 and version != VERSION: return {}
+	if version == 3:
+		if data.get("world_id") == "classic":
+			if data.get("world_size") != 96 or data.get("generator") != 1: return {}
+		elif data.get("world_id") == "farm":
+			if data.get("world_size") != 192 or data.get("generator") != 2: return {}
+		else: return {}
+		if not data.get("animals",[]) is Array: return {}
+	elif data.get("generator") != 1: return {}
+	if version >= 2:
 		var hotbar: Variant = data.get("hotbar")
 		if not hotbar is Array or hotbar.size() != 8: return {}
 	if not (data.get("seed") is float or data.get("seed") is int): return {}
+	if not is_finite(float(data["seed"])): return {}
 	if not data.get("changes") is Dictionary: return {}
 	var pos: Variant = data.get("position")
 	if not pos is Array or pos.size() != 3: return {}

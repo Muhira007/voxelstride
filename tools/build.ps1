@@ -48,6 +48,7 @@ if (-not $SkipSetup) {
 if (-not (Test-Path -LiteralPath $engine)) { throw 'Godot tidak tersedia. Jalankan tanpa -SkipSetup.' }
 Invoke-Godot @('--headless', '--path', '.', '--editor', '--import', '--quit')
 Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_core.gd')
+Invoke-Godot @('--headless', '--path', '.', '--script', 'tests/test_worlds.gd')
 Invoke-Godot @('--headless', '--path', '.', '--', '--smoke-test')
 Invoke-Godot @('--headless', '--path', '.', '--export-release', 'Windows Desktop', 'build/DuniaMinecraft.exe')
 
@@ -60,7 +61,7 @@ $output | ForEach-Object { Write-Host $_ }
 if ($code -ne 0 -or -not ($output -match 'SMOKE PASS:')) { throw 'Pengujian EXE hasil export gagal.' }
 Copy-Item -LiteralPath 'README.md', 'LICENSE-Godot.txt', 'THIRD-PARTY-Godot.txt' -Destination 'build' -Force
 New-Item -ItemType Directory -Force -Path 'build\docs' | Out-Null
-Copy-Item -LiteralPath 'docs\gameplay.png', 'docs\materials.png', 'docs\inventory.png', 'docs\CATALOG.md' -Destination 'build\docs' -Force
+Copy-Item -LiteralPath 'docs\gameplay.png', 'docs\materials.png', 'docs\inventory.png', 'docs\CATALOG.md', 'docs\DESA-PERTANIAN.md', 'docs\worlds.png', 'docs\farm-overview.png', 'docs\farm-gameplay.png', 'docs\farm-animals.png', 'docs\farm-fields.png' -Destination 'build\docs' -Force
 Compress-Archive -LiteralPath $buildExe, 'build\README.md', 'build\LICENSE-Godot.txt', 'build\THIRD-PARTY-Godot.txt', 'build\docs' -DestinationPath 'build\DuniaMinecraft-Windows-x64.zip' -Force
 Write-Host "Build selesai: $buildExe"
 Get-FileHash -LiteralPath $buildExe -Algorithm SHA256 | Format-List

@@ -21,6 +21,27 @@ static func paint(entry: Dictionary, face: int, seed_value: int) -> Image:
 			var shade := n * 0.12 + fine
 			var color := base
 			match pattern:
+				"farmland":
+					shade = n*0.08 + fine
+					if face == 0: shade += -0.10 if x%8 < 2 else 0.025
+				"hay":
+					shade = (grain(x,y/8,seed_value)-0.5)*0.16
+					if y in [7,8,23,24] and face == 1: color = Color("816146")
+				"pumpkin":
+					shade = sin(x*PI/4)*0.055+fine
+					if face == 0 and abs(x-16)<3 and abs(y-16)<3: color = Color("586342")
+				"apple_leaves":
+					shade = n*0.15 + fine
+					if (x-10)*(x-10)+(y-11)*(y-11)<10 or (x-24)*(x-24)+(y-24)*(y-24)<7: color = Color("b94e3f")
+				"water":
+					shade = sin(x*0.4+y*0.7+n*2)*0.03
+					color.a = 0.66
+				"crop":
+					color.a = 0.0
+					if x%8 in [3,4] and y>7: color.a = 1.0
+					if y in [9,10,15,16] and x%8>1 and x%8<7: color.a = 1.0
+				"fence":
+					if not (x in range(13,19) or y in range(9,13) or y in range(22,26)): color.a = 0.0
 				"grass", "soil":
 					if face == 2 or (face == 1 and y > 5 + int(grain(x/3,0,1)*4)):
 						color = Color("82644c")

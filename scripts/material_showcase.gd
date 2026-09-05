@@ -48,7 +48,7 @@ static func capture(game: Node3D) -> void:
 	game.player.camera.look_at(Vector3(49,27.5,43))
 	world.update_local_lights(Vector3(49,29,45))
 	var title := Label.new()
-	title.text = "MATERIAL STUDIES\n177 BLOK  /  TEKSTUR 32 PX  /  DUNIA MINECRAFT 0.2"
+	title.text = "MATERIAL STUDIES\n187 BAHAN  /  TEKSTUR 32 PX  /  DUNIA MINECRAFT 0.3"
 	title.position = Vector2(38,25)
 	title.add_theme_font_size_override("font_size",20)
 	title.add_theme_color_override("font_color",Color("f4f0dd"))

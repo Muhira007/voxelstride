@@ -113,7 +113,7 @@ func run() -> void:
 	quit(1 if failures else 0)
 
 func _test_catalog(world: Node3D, store: RefCounted, directory: String) -> void:
-	check(Blocks.catalog().size() == 177 and Blocks.entries.size() <= 256, "177 materials fit byte voxel storage")
+	check(Blocks.catalog().size() == 187 and Blocks.entries.size() <= 256, "187 materials fit byte voxel storage")
 	check(Blocks.lookup.size() == Blocks.entries.size(), "catalog keys are unique")
 	check(Blocks.id("grass") == 1 and Blocks.id("oak_planks") == 8 and Blocks.id("bedrock") == 9, "legacy IDs remain stable")
 	check(not Blocks.is_placeable(9) and not Blocks.is_placeable(0), "air and bedrock absent from inventory")

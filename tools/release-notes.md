@@ -1,16 +1,19 @@
-Pembaruan material Dunia Minecraft 0.2: game voxel kreatif offline untuk Windows 10/11 64-bit.
+Desa Pertanian & Pilihan Dunia — Dunia Minecraft 0.3.0 untuk Windows 10/11 64-bit.
 
 Unduh **DuniaMinecraft-Windows-x64.zip**, ekstrak, lalu buka **DuniaMinecraft.exe**. Tidak perlu Godot, server, atau internet saat bermain.
 
-- **177 bahan**: keluarga batu/kayu, kuarsa, bata, 16 warna beton/terakota/wol/kaca, tembaga, dan lainnya.
-- **Tekstur orisinal 32px**, bayangan sudut antarblok, filter jarak jauh, ikon dan blok di tangan bertekstur.
-- Kaca transparan serta glowstone, lentera laut, dan shroomlight dengan cahaya lokal.
-- Inventori berkategori dan pencarian; LB/RB pindah halaman, LT/RT pindah kategori. Delapan slot hotbar dapat diganti dan tersimpan.
-- Dunia 96 × 96, gerak orang pertama, serta save otomatis dan cadangan tetap tersedia. Save v0.1 masih terbaca; format save baru tidak dapat dibuka oleh EXE v0.1.
+- **Pilihan dunia**: Dunia Klasik 96 × 96 dan Desa Pertanian **192 × 192**, tepat 4× luasnya, dengan save terpisah.
+- Desa berisi **6 rumah**, sumur, dua kios, lumbung, gudang, kincir dekoratif, empat ladang beririgasi, kebun apel, kolam/jembatan, dan jalan pedesaan.
+- **20 ternak hidup**: 5 sapi, 5 domba, 4 babi, 6 ayam; berjalan/diam, collision, animasi kaki, batas kandang, serta posisi tersimpan.
+- **187 bahan kreatif** termasuk tanaman berbentuk khusus, pagar, tanah ladang, jerami, labu, daun apel, dan air dekoratif. Tekstur 32px dan inventori berkategori/pencarian tetap tersedia.
+- Pemuatan chunk bertahap dan AI hewan berdasarkan jarak. Menu jeda menghentikan ternak.
+- Save v0.1/v0.2 dapat dilanjutkan sebagai Dunia Klasik. Sebelum save klasik lama dibuka, salinan satu kali `world.json.pre-v0.3.bak` dibuat. Save baru berformat v3 dan tidak kompatibel dengan EXE versi lama.
 - Kontrol Xbox 360: **Y menghancurkan blok**, **X memasang blok**, dan **Back membuka inventori**; keyboard/mouse, menu jeda, serta save otomatis dan cadangan tetap tersedia.
 
-Validasi: 430 pemeriksaan inti dan smoke test pada source serta EXE hasil export. Tampilan awal diuji pada Intel UHD Graphics 620 di 1280 × 720, mencapai 60 FPS dalam adegan awal, bukan jaminan semua dunia/perangkat. Controller diuji dengan input sintetis; pengujian joystick fisik masih diperlukan.
+Tetap bisa dimainkan dari repo dengan **Mainkan.bat**. Pilih dunia pada menu awal; saat bermain, gunakan **Start/Esc → Simpan & pilih dunia**. Kegagalan save membatalkan perpindahan. File desa berada di `%APPDATA%\DuniaMinecraft\worlds\desa-pertanian.json`; dunia lama tetap `world.json`.
 
-Ini prototipe kreatif; bahan masih berbentuk kubus penuh. Belum ada survival, crafting, mob, multiplayer, cairan, slab/tangga, atau dunia tak terbatas. Maksimum delapan lampu lokal aktif, tanpa bayangan lampu dinamis. Panduan kontrol, katalog, dan lokasi save ada di README dalam ZIP. Untuk menjalankan source langsung, klik Mainkan.bat dari repo.
+Validasi: **450 pemeriksaan inti + 95 pemeriksaan dunia**, smoke test source dan EXE, termasuk save terpisah, world switching, gerak/jeda/pemulihan ternak, serta proteksi ketika save gagal. Uji adegan awal Intel UHD Graphics 620, 1280 × 720, sekitar 59–60 FPS. Ini bukan jaminan performa ketika melintasi chunk atau setelah banyak perubahan; controller fisik masih perlu dicoba pengguna.
+
+Batas versi pertama: belum ada panen/pertumbuhan tanaman, memberi makan, breeding, perdagangan, kincir bergerak, simulasi aliran air, survival, crafting, multiplayer, atau slot dunia bebas. Hewan tetap dibatasi kandang asal. Pemuatan area dapat menyebabkan jeda singkat; batas render bisa terlihat dari ketinggian. Panduan lengkap tersedia di README dan `docs/DESA-PERTANIAN.md` dalam ZIP.
 
 Proyek independen, tidak berafiliasi dengan Mojang/Microsoft.
