@@ -46,12 +46,12 @@ Ini masih prototipe kreatif: belum ada survival, crafting, mob, multiplayer, pem
 | Lompat | A | Space |
 | Jongkok (tahan) | B | Ctrl |
 | Lari (tahan) | Klik analog kiri | Shift |
-| Hancurkan blok | RT | Klik kiri |
-| Pasang blok | LT | Klik kanan |
+| Hancurkan blok | Y | Klik kiri |
+| Pasang blok | X | Klik kanan |
 | Pilih blok | LB/RB atau D-pad | 1–8 atau scroll |
-| Inventori | Y | E |
+| Inventori | Back | E |
 | Menu jeda | Start | Esc |
-| Simpan | Back | F5 |
+| Simpan | — | F5 |
 | Navigasi menu | D-pad / analog kiri; A pilih; B kembali | Panah / Tab / Enter / mouse |
 | Layar penuh | — | F11 |
 

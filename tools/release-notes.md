@@ -4,7 +4,7 @@ Unduh **DuniaMinecraft-Windows-x64.zip**, ekstrak, lalu buka **DuniaMinecraft.ex
 
 - Dunia 96 × 96 dengan bukit, pohon, dan delapan jenis blok tak terbatas.
 - Kamera orang pertama; berjalan, berlari, melompat, jongkok, memasang dan menghancurkan blok.
-- Kontrol Xbox 360, keyboard/mouse, inventori, menu jeda, serta save otomatis dan cadangan.
+- Kontrol Xbox 360: **Y menghancurkan blok**, **X memasang blok**, dan **Back membuka inventori**; keyboard/mouse, menu jeda, serta save otomatis dan cadangan tetap tersedia.
 
 Validasi: 44 pemeriksaan inti dan smoke test pada source serta EXE hasil export. Tampilan awal diuji pada Intel UHD Graphics 620 di 1280 × 720, mencapai 60 FPS. Controller diuji dengan input sintetis; pengujian joystick fisik masih diperlukan.
 

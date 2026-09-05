@@ -65,7 +65,7 @@ func _draw() -> void:
 		_text(rect.position + Vector2(5,14), str(i + 1), 10, GOLD if i == selected else Color("9faeaa"))
 	_center(Vector2(w / 2,h-128), Blocks.NAMES[selected + 1] + "  /  TAK TERBATAS", 15)
 	_center(Vector2(w / 2,h-15), "LB / RB atau D-pad  ·  Pilih blok" if controller else "1–8 atau scroll  ·  Pilih blok", 12, Color("d6dfd0"))
-	var hint := "RT  Hancurkan    LT  Pasang    Y  Inventori    START  Menu" if controller else "Klik kiri  Hancurkan    Klik kanan  Pasang    E  Inventori    Esc  Menu"
+	var hint := "Y  Hancurkan    X  Pasang    BACK  Inventori    START  Menu" if controller else "Klik kiri  Hancurkan    Klik kanan  Pasang    E  Inventori    Esc  Menu"
 	var hint_width := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28
 	draw_style_box(_panel(Color(0.055,0.12,0.14,0.8)), Rect2((w-hint_width)/2,h-181,hint_width,30))
 	_center(Vector2(w/2, h-160), hint, 14)

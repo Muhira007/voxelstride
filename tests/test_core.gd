@@ -84,12 +84,6 @@ func run() -> void:
 	for filename in dir.get_files(): dir.remove(filename)
 	DirAccess.remove_absolute(directory)
 	GameInput.setup()
-	var trigger := InputEventJoypadMotion.new()
-	trigger.axis = JOY_AXIS_TRIGGER_RIGHT
-	trigger.axis_value = 1.0
-	check(trigger.is_action_pressed("break_block"), "Xbox RT maps to break")
-	trigger.axis = JOY_AXIS_TRIGGER_LEFT
-	check(trigger.is_action_pressed("place_block"), "Xbox LT maps to place")
 	var button := InputEventJoypadButton.new()
 	button.pressed = true
 	button.button_index = JOY_BUTTON_A
@@ -97,7 +91,11 @@ func run() -> void:
 	button.button_index = JOY_BUTTON_B
 	check(button.is_action_pressed("crouch"), "Xbox B maps to crouch")
 	button.button_index = JOY_BUTTON_Y
-	check(button.is_action_pressed("inventory"), "Xbox Y maps to inventory")
+	check(button.is_action_pressed("break_block") and not button.is_action_pressed("inventory"), "Xbox Y maps to break, not inventory")
+	button.button_index = JOY_BUTTON_X
+	check(button.is_action_pressed("place_block"), "Xbox X maps to place")
+	button.button_index = JOY_BUTTON_BACK
+	check(button.is_action_pressed("inventory") and not button.is_action_pressed("save_world"), "Xbox Back maps to inventory")
 	button.button_index = JOY_BUTTON_START
 	check(button.is_action_pressed("pause"), "Xbox Start maps to menu")
 	button.button_index = JOY_BUTTON_DPAD_UP
