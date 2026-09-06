@@ -9,6 +9,9 @@ const Blocks = preload("res://scripts/blocks.gd")
 const Inventory = preload("res://scripts/inventory.gd")
 const Herd = preload("res://scripts/farm_herd.gd")
 const Waterfall = preload("res://scripts/waterfall.gd")
+const Catalog = preload("res://scripts/world_catalog.gd")
+const WorldPicker = preload("res://scripts/world_picker.gd")
+const Traffic = preload("res://scripts/city_traffic.gd")
 
 var world: Node3D
 var player: CharacterBody3D
@@ -45,17 +48,18 @@ var loading_world := false
 var automation_save_root := ""
 var environment: Environment
 var waterfall: Node3D
+var traffic: Node3D
+var world_picker: Control
 
 func world_name(id: String) -> String:
-	if id == "valley": return "Lembah & Air Terjun"
-	return "Desa Pertanian" if id == "farm" else "Dunia Klasik"
+	return Catalog.entry(id).get("name","Dunia")
 
 func _ready() -> void:
 	Blocks.setup()
 	GameInput.setup()
 	get_tree().auto_accept_quit = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	automation = OS.get_cmdline_user_args().has("--smoke-test") or OS.get_cmdline_user_args().has("--capture") or OS.get_cmdline_user_args().has("--capture-farm") or OS.get_cmdline_user_args().has("--capture-valley")
+	automation = OS.get_cmdline_user_args().has("--smoke-test") or OS.get_cmdline_user_args().has("--capture") or OS.get_cmdline_user_args().has("--capture-farm") or OS.get_cmdline_user_args().has("--capture-valley") or OS.get_cmdline_user_args().has("--capture-city")
 	_build_environment()
 	_build_interface()
 	_build_audio()
@@ -64,6 +68,9 @@ func _ready() -> void:
 	loaded = true
 	_show_menu("worlds")
 	if automation:
+		if OS.get_cmdline_user_args().has("--capture-city"):
+			await preload("res://scripts/city_verification.gd").capture(self)
+			return
 		if OS.get_cmdline_user_args().has("--capture-valley"):
 			await preload("res://scripts/valley_verification.gd").capture(self)
 			return
@@ -82,18 +89,18 @@ func _choose_world(id: String) -> bool:
 		_start_playing()
 		return true
 	if not _save_world():
-		menu_subtitle.text = store.last_error+" Dunia belum diganti."
+		_world_error(store.last_error+" Dunia belum diganti.")
 		return false
 	var base := "user://" if automation_save_root.is_empty() else automation_save_root
 	var saved := {}
 	if not automation or not automation_save_root.is_empty():
 		if not store.prepare_world(id,base):
-			menu_subtitle.text = store.last_error
+			_world_error(store.last_error)
 			return false
 		saved = store.read_world(id,base)
 		startup_message = store.last_error
 		if saved.is_empty() and not store.last_error.is_empty():
-			menu_subtitle.text = store.last_error+" Pulihkan save sebelum membuka dunia ini."
+			_world_error(store.last_error+" Pulihkan save sebelum membuka dunia ini.")
 			return false
 	else: startup_message = ""
 	loading_world = true
@@ -104,12 +111,13 @@ func _choose_world(id: String) -> bool:
 	progress_label.text = "Membuat lingkungan…"
 	await get_tree().process_frame
 	await get_tree().process_frame
-	for node in [herd,player,world,outline,waterfall]:
+	for node in [herd,traffic,player,world,outline,waterfall]:
 		if is_instance_valid(node):
 			remove_child(node)
 			node.queue_free()
 	herd = null
 	waterfall = null
+	traffic = null
 	player = null
 	world = null
 	outline = null
@@ -117,7 +125,7 @@ func _choose_world(id: String) -> bool:
 	active_world_id = id
 	for cloud in get_tree().get_nodes_in_group("world_clouds"):
 		var original: Vector3 = cloud.get_meta("original_position")
-		cloud.position = Vector3(original.x*3.0,original.y+72,original.z*3.0) if id == "valley" else (Vector3(original.x*1.6,original.y+55,original.z*1.6) if id == "farm" else original)
+		cloud.position = Vector3(original.x*3.0,original.y+72,original.z*3.0) if id in ["valley","city"] else (Vector3(original.x*1.6,original.y+55,original.z*1.6) if id == "farm" else original)
 	started = false
 	selected = 0
 	hotbar = Blocks.restore_hotbar(null)
@@ -130,16 +138,17 @@ func _choose_world(id: String) -> bool:
 	world.set_process(false)
 	add_child(world)
 	if id == "valley": await world.generate_valley_async(int(saved.get("seed",20260905)),_loading_progress)
+	elif id == "city": await world.generate_city_async(int(saved.get("seed",20260905)),_loading_progress)
 	else: world.generate(int(saved.get("seed",20260905)))
 	if not saved.is_empty(): world.apply_changes(saved["changes"])
-	if id == "valley": await world.prepare_distant_landscape(_loading_progress)
+	if id in ["valley","city"]: await world.prepare_distant_landscape(_loading_progress)
 	player = Player.new()
 	player.world = world
 	add_child(player)
 	player.respawn()
-	player.rotation.y = -0.4 if id == "valley" else (0 if id == "farm" else -2.4)
+	player.rotation.y = 0.9 if id == "city" else (-0.4 if id == "valley" else (0 if id == "farm" else -2.4))
 	player.pitch = -0.10
-	player.camera.far = 520 if id == "valley" else (125 if id == "farm" else 180)
+	player.camera.far = 520 if id in ["valley","city"] else (125 if id == "farm" else 180)
 	if not saved.is_empty(): _restore_player(saved)
 	var queue: Array[Vector2i] = []
 	if world.streaming:
@@ -154,7 +163,7 @@ func _choose_world(id: String) -> bool:
 		world.build_chunk(queue[i])
 		progress_label.text = "%s · Menyiapkan area %d / %d" % [world_name(id),i+1,total]
 		await get_tree().process_frame
-	if id != "classic":
+	if id in ["farm","valley"]:
 		herd = Herd.new()
 		add_child(herd)
 		herd.populate(world,saved.get("animals",[]))
@@ -162,10 +171,14 @@ func _choose_world(id: String) -> bool:
 	if id == "valley":
 		waterfall = Waterfall.new()
 		add_child(waterfall)
+	if id == "city":
+		traffic = Traffic.new()
+		add_child(traffic)
+		traffic.populate(world,player,saved.get("vehicles",[]))
 	_build_selection()
 	_select_block(selected)
 	hud.world_title = world_name(id).to_upper()
-	environment.fog_density = 0.0018 if id == "valley" else (0.009 if id == "farm" else 0.0015)
+	environment.fog_density = 0.0018 if id in ["valley","city"] else (0.009 if id == "farm" else 0.0015)
 	environment.ambient_light_energy = 0.60 if id != "classic" else 0.42
 	loaded = true
 	await get_tree().physics_frame
@@ -177,6 +190,10 @@ func _choose_world(id: String) -> bool:
 
 func _loading_progress(message: String) -> void:
 	progress_label.text = message
+
+func _world_error(message: String) -> void:
+	menu_subtitle.text = message
+	if is_instance_valid(world_picker) and world_picker.visible: world_picker.show_error(message)
 
 func _world_picker() -> void:
 	if _save_world(): _show_menu("worlds")
@@ -253,9 +270,9 @@ func _build_interface() -> void:
 	left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	left.add_theme_constant_override("separation", 14)
 	columns.add_child(left)
-	var badge := _label("PROTOTIPE 04     /     TIGA DUNIA", 13, Color("ebc76b"))
+	var badge := _label("VOXELSTRIDE     /     PROTOTIPE 05", 13, Color("ebc76b"))
 	left.add_child(badge)
-	menu_title = _label("DUNIA\nMINECRAFT", 58)
+	menu_title = _label("VOXEL\nSTRIDE", 58)
 	menu_title.add_theme_constant_override("line_spacing", -8)
 	left.add_child(menu_title)
 	menu_subtitle = _label("Temukan tempatmu. Bangun sesukamu.", 18, Color("b9ccc0"))
@@ -291,7 +308,7 @@ func _build_interface() -> void:
 	help.add_child(_label("KEYBOARD + MOUSE", 12, Color("a9bfb3")))
 	help.add_child(_label("WASD  Gerak    Mouse  Melihat\nSpace  Lompat   Ctrl  Jongkok\nShift  Lari         E  Inventori\nKlik kiri / kanan  Ubah blok\n1–8 / Scroll  Pilih   Esc  Menu\nF5  Simpan       F11  Layar penuh", 15))
 	help.add_child(HSeparator.new())
-	help.add_child(_label("Offline · Save terpisah untuk tiap dunia\nKlasik 96 · Desa 192 · Lembah 384", 12, Color("a9bfb3")))
+	help.add_child(_label("Offline · Save terpisah untuk tiap dunia\nPilih lingkungan di katalog template", 12, Color("a9bfb3")))
 	var footer := _label("Dibuat dengan Godot  •  Proyek independen, tidak berafiliasi dengan Mojang atau Microsoft.", 12, Color("a9bfb3"))
 	footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	footer.position = Vector2(64,-28)
@@ -300,6 +317,11 @@ func _build_interface() -> void:
 	canvas.add_child(inventory)
 	inventory.block_chosen.connect(_choose_inventory)
 	inventory.closed.connect(_start_playing)
+	world_picker = WorldPicker.new()
+	canvas.add_child(world_picker)
+	world_picker.world_chosen.connect(_choose_world)
+	world_picker.closed.connect(_start_playing)
+	world_picker.exit_requested.connect(_quit)
 
 func _label(text: String, font_size: int, color: Color = Color("f4f0dd")) -> Label:
 	var label := Label.new()
@@ -338,11 +360,24 @@ func _show_menu(state: String) -> void:
 	if is_instance_valid(world): world.set_process(false)
 	if is_instance_valid(herd): herd.pause()
 	if is_instance_valid(waterfall): waterfall.set_active(false)
+	if is_instance_valid(traffic): traffic.pause()
 	hud.active = false
 	if is_instance_valid(outline): outline.visible = false
 	if is_instance_valid(held_block): held_block.visible = false
 	overlay.show()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	world_picker.hide()
+	if state == "worlds":
+		overlay.hide()
+		inventory.hide()
+		var saves := []
+		if not automation or not automation_save_root.is_empty():
+			var base := "user://" if automation_save_root.is_empty() else automation_save_root
+			for id in Catalog.WORLD_IDS:
+				var path := store.world_path(id,base)
+				if FileAccess.file_exists(path) or FileAccess.file_exists(path+".bak"): saves.append(id)
+		world_picker.open(active_world_id,saves)
+		return
 	if state == "inventory":
 		overlay.hide()
 		inventory.open(selected,hotbar)
@@ -359,18 +394,6 @@ func _show_menu(state: String) -> void:
 			menu_subtitle.text = "Pemuatan bertahap. Save lama tetap terpisah."
 			progress_label = _label("",18,Color("ebc76b"))
 			menu_box.add_child(progress_label)
-		"worlds":
-			menu_title.text = "PILIH\nDUNIAMU."
-			menu_title.add_theme_font_size_override("font_size",42)
-			menu_subtitle.text = "Tiga lingkungan. Save terpisah."
-			first = _button("Dunia Klasik   ·   96 × 96",_choose_world.bind("classic"))
-			menu_box.add_child(_label("Dunia lama dan semua bangunan Anda.",14,Color("a9bfb3")))
-			_button("Desa Pertanian   ·   192 × 192",_choose_world.bind("farm"))
-			menu_box.add_child(_label("6 rumah · kebun · kandang · 20 hewan",14,Color("a9bfb3")))
-			_button("Lembah & Air Terjun   ·   384 × 384",_choose_world.bind("valley"),true)
-			menu_box.add_child(_label("Bukit · sungai · jalur jelajah · desa lembah",14,Color("a9bfb3")))
-			if is_instance_valid(world): _button("Kembali ke "+world_name(active_world_id),_start_playing)
-			_button("Keluar",_quit)
 		"pause":
 			menu_title.text = "TARIK NAPAS."
 			menu_title.add_theme_font_size_override("font_size", 46)
@@ -382,7 +405,7 @@ func _show_menu(state: String) -> void:
 			_button("Simpan & pilih dunia", _world_picker)
 			_button("Simpan & keluar", _quit)
 		_:
-			menu_title.text = "DUNIA\nMINECRAFT"
+			menu_title.text = "VOXEL\nSTRIDE"
 			menu_title.add_theme_font_size_override("font_size", 58)
 			menu_subtitle.text = "Temukan tempatmu. Bangun sesukamu."
 			first = _button("Masuk ke dunia    →", _start_playing, true)
@@ -396,12 +419,14 @@ func _start_playing() -> void:
 	started = true
 	menu_state = "playing"
 	overlay.hide()
+	world_picker.hide()
 	inventory.hide()
 	player.enabled = true
 	world.set_process(true)
 	world.update_stream(player.position)
 	if is_instance_valid(herd): herd.enabled = true
 	if is_instance_valid(waterfall): waterfall.set_active(true)
+	if is_instance_valid(traffic): traffic.enabled = true
 	hud.active = true
 	held_block.visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if not automation else Input.MOUSE_MODE_VISIBLE
@@ -441,6 +466,9 @@ func _input(event: InputEvent) -> void:
 		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 		get_viewport().set_input_as_handled()
+		return
+	if menu_state == "worlds":
+		if world_picker.handle_input(event): get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("pause"):
 		if menu_state == "playing": _show_menu("pause")
@@ -508,6 +536,7 @@ func _edit_block(place: bool) -> bool:
 			return false
 		if player.overlaps_block(cell): return false
 		if is_instance_valid(herd) and herd.overlaps(cell): return false
+		if is_instance_valid(traffic) and traffic.overlaps(cell): return false
 		if world.get_block(cell) != 0: return false
 	elif world.get_block(cell) == 9:
 		hud.notify("Batuan dasar tidak dapat dihancurkan.")
@@ -595,6 +624,7 @@ func _restore_player(saved: Dictionary) -> void:
 func _save_world() -> bool:
 	if not loaded or not started or (automation and automation_save_root.is_empty()): return true
 	var data := {"version": SaveStore.VERSION, "generator": world.generator_version, "world_id":active_world_id,"world_size":world.size,"world_height":world.height,"seed": world.world_seed, "changes": world.changes, "position": [player.position.x, player.position.y, player.position.z], "yaw": player.rotation.y, "pitch": player.pitch, "selected": selected, "hotbar":hotbar,"animals":herd.snapshot() if is_instance_valid(herd) else []}
+	if is_instance_valid(traffic): data["vehicles"] = traffic.snapshot()
 	var base := "user://" if automation_save_root.is_empty() else automation_save_root
 	var success := store.write_save(data,store.world_path(active_world_id,base))
 	hud.notify("Dunia tersimpan." if success else store.last_error)
@@ -725,6 +755,7 @@ func _smoke_test() -> void:
 	_smoke_check(menu_state == "playing", "Xbox B returns from pause")
 	await preload("res://scripts/farm_verification.gd").smoke(self)
 	await preload("res://scripts/valley_verification.gd").smoke(self)
+	await preload("res://scripts/city_verification.gd").smoke(self)
 	print("SMOKE %s: collision, movement, jump, crouch, edits, self-placement protection, stick look, controller menus; %d chunks; %d failures" % ["PASS" if smoke_failures == 0 else "FAIL", world.chunks.size(), smoke_failures])
 	get_tree().quit(1 if smoke_failures else 0)
 

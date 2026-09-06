@@ -16,7 +16,7 @@ var world: Node3D
 
 func _ready() -> void:
 	collision_layer = 2
-	collision_mask = 5
+	collision_mask = 13
 	floor_snap_length = 0.25
 	floor_stop_on_slope = true
 	shape = CollisionShape3D.new()

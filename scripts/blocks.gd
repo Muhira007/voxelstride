@@ -115,6 +115,14 @@ static func setup() -> void:
 	_add("potato_crop", "Tanaman Kentang", "Alam", "7b9c4c", "crop", false, false, "crop")
 	_add("oak_fence", "Pagar Oak", "Kayu", "a58454", "fence", false, false, "fence")
 	_add("meadow_flower", "Bunga Padang", "Alam", "dcad8a", "crop", false, false, "crop")
+	_add("asphalt", "Aspal Jalan", "Bangunan", "343b42", "asphalt")
+	_add("city_paving", "Paving Trotoar", "Bangunan", "a5aaa5", "paving")
+	_add("road_white", "Marka Putih", "Bangunan", "dadbcf", "road_mark")
+	_add("road_yellow", "Marka Kuning", "Bangunan", "dcb84f", "road_mark")
+	# Opaque facade panels avoid costly layers of transparency in the city skyline.
+	_add("facade_blue", "Panel Jendela Biru", "Bangunan", "477585", "facade")
+	_add("facade_warm", "Panel Jendela Hangat", "Bangunan", "b29868", "facade")
+	_add("roof_vent", "Ventilasi Atap", "Bangunan", "70797c", "vent")
 
 static func _add(key: String, label: String, category: String, color: String, pattern: String, transparent: bool = false, emissive: bool = false, shape: String = "cube") -> void:
 	lookup[key] = entries.size()

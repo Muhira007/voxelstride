@@ -7,10 +7,7 @@ static func smoke(game: Node3D) -> void:
 	game.automation_save_root = test_root
 	game.store.prepare_world("farm",test_root)
 	game._world_picker()
-	for button in game.menu_box.get_children():
-		if button is Button and button.text.begins_with("Lembah & Air Terjun"):
-			button.grab_focus()
-			break
+	game.world_picker.reveal("valley")
 	await game._simulate_pad_button(JOY_BUTTON_A)
 	while game.loading_world: await game.get_tree().process_frame
 	game._smoke_check(game.active_world_id == "valley" and game.menu_state == "playing","Xbox A selects third world")

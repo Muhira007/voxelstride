@@ -11,10 +11,7 @@ static func smoke(game: Node3D) -> void:
 	var classic_path: String = game.store.world_path("classic",test_root)
 	game._world_picker()
 	game._smoke_check(game.menu_state == "worlds","pause menu opens world selection")
-	for button in game.menu_box.get_children():
-		if button is Button and button.text.begins_with("Desa Pertanian"):
-			button.grab_focus()
-			break
+	game.world_picker.reveal("farm")
 	await game._simulate_pad_button(JOY_BUTTON_A)
 	while game.loading_world: await game.get_tree().process_frame
 	game._smoke_check(game.active_world_id == "farm" and game.menu_state == "playing","Xbox A opens selected farm world")

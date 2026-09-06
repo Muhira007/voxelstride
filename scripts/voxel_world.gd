@@ -5,6 +5,8 @@ const Farm = preload("res://scripts/farm_layout.gd")
 const Shapes = preload("res://scripts/voxel_shapes.gd")
 const Valley = preload("res://scripts/valley_layout.gd")
 const FarLandscape = preload("res://scripts/far_landscape.gd")
+const Catalog = preload("res://scripts/world_catalog.gd")
+const City = preload("res://scripts/city_layout.gd")
 const SIZE := 96
 const HEIGHT := 40
 const CHUNK := 16
@@ -42,11 +44,12 @@ var stream_center := Vector2i(-100,-100)
 const STREAM_RADIUS := 3
 
 func configure(id: String) -> void:
-	assert(id in ["classic","farm","valley"])
+	var item := Catalog.entry(id)
+	assert(not item.is_empty())
 	world_id = id
-	size = 384 if id == "valley" else (192 if id == "farm" else SIZE)
-	height = 80 if id == "valley" else HEIGHT
-	generator_version = 3 if id == "valley" else (2 if id == "farm" else GENERATOR_VERSION)
+	size = item["size"]
+	height = item["height"]
+	generator_version = item["generator"]
 	blocks.resize(size*height*size)
 
 func _init() -> void:
@@ -70,6 +73,9 @@ func generate(seed_value: int) -> void:
 	blocks.fill(0)
 	changes.clear()
 	emissive_cells.clear()
+	if world_id == "city":
+		City.generate(self)
+		return
 	if world_id == "valley":
 		Valley.generate(self)
 		return
@@ -118,6 +124,7 @@ func surface_height(x: int, z: int) -> int:
 	return 0
 
 func spawn_position() -> Vector3:
+	if world_id == "city": return Vector3(208.5,15.1,224.5)
 	if world_id == "valley": return Vector3(192.5,23.1,208.5)
 	if world_id == "farm": return Vector3(96.5,16.1,112.5)
 	return Vector3(SIZE / 2.0 + 0.5, surface_height(SIZE / 2, SIZE / 2) + 2.1, SIZE / 2.0 + 0.5)
@@ -266,6 +273,13 @@ func prepare_distant_landscape(progress: Callable) -> void:
 	far_landscape = FarLandscape.new()
 	add_child(far_landscape)
 	await far_landscape.prepare(self,progress)
+
+func generate_city_async(seed_value: int, progress: Callable) -> void:
+	world_seed = seed_value
+	blocks.fill(0)
+	changes.clear()
+	emissive_cells.clear()
+	await City.generate_async(self,progress)
 
 func vertex_shade(p: Vector3i, normal: Vector3i, corner: Vector3) -> float:
 	var tangents: Array[Vector3i] = []

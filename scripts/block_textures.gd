@@ -21,6 +21,23 @@ static func paint(entry: Dictionary, face: int, seed_value: int) -> Image:
 			var shade := n * 0.12 + fine
 			var color := base
 			match pattern:
+				"asphalt":
+					shade = (grain(x,y,seed_value)-0.5)*0.085+n*0.035
+				"paving":
+					shade = n*0.035+fine
+					if x%16 == 0 or y%16 == 0: shade -= 0.16
+					elif x%16 == 1 or y%16 == 1: shade += 0.045
+				"road_mark":
+					shade = n*0.035+fine
+					if grain(x,y,seed_value)>0.965: color = Color("68706f")
+				"facade":
+					shade = (x+y)/64.0*0.055+fine*0.2
+					if x in [0,1,15,16,30,31] or y in [0,1,30,31]: color = Color("3b4c55")
+					elif posmod(x+y,27)<2: shade += 0.12
+				"vent":
+					shade = n*0.02
+					if x<3 or x>28 or y<3 or y>28: shade -= 0.1
+					elif y%5<2: shade -= 0.25
 				"farmland":
 					shade = n*0.08 + fine
 					if face == 0: shade += -0.10 if x%8 < 2 else 0.025

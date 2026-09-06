@@ -2,14 +2,13 @@ extends RefCounted
 
 const VERSION := 3
 const PATH := "user://world.json"
-const WORLD_IDS := ["classic", "farm", "valley"]
+const Catalog = preload("res://scripts/world_catalog.gd")
+const WORLD_IDS := Catalog.WORLD_IDS
 var last_error := ""
 
 func world_path(world_id: String, base: String = "user://") -> String:
-	if world_id == "classic": return base.path_join("world.json")
-	if world_id == "farm": return base.path_join("worlds/desa-pertanian.json")
-	if world_id == "valley": return base.path_join("worlds/lembah-air-terjun.json")
-	return ""
+	var item := Catalog.entry(world_id)
+	return "" if item.is_empty() else base.path_join(item["path"])
 
 func read_world(world_id: String, base: String = "user://") -> Dictionary:
 	var path := world_path(world_id,base)
@@ -57,14 +56,12 @@ func _read_valid(path: String) -> Dictionary:
 	var version: Variant = data.get("version")
 	if version != 1 and version != 2 and version != VERSION: return {}
 	if version == 3:
-		if data.get("world_id") == "classic":
-			if data.get("world_size") != 96 or data.get("generator") != 1: return {}
-		elif data.get("world_id") == "farm":
-			if data.get("world_size") != 192 or data.get("generator") != 2: return {}
-		elif data.get("world_id") == "valley":
-			if data.get("world_size") != 384 or data.get("world_height") != 80 or data.get("generator") != 3: return {}
-		else: return {}
+		if not data.get("world_id") is String: return {}
+		var item := Catalog.entry(data["world_id"])
+		if item.is_empty() or data.get("world_size") != item["size"] or data.get("generator") != item["generator"]: return {}
+		if item["generator"]>=3 and data.get("world_height") != item["height"]: return {}
 		if not data.get("animals",[]) is Array: return {}
+		if not data.get("vehicles",[]) is Array: return {}
 	elif data.get("generator") != 1: return {}
 	if version >= 2:
 		var hotbar: Variant = data.get("hotbar")
